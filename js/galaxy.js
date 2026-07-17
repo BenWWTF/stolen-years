@@ -372,29 +372,36 @@ export function buildGalaxy({
   }
 
   /**
-   * Pre-ignite a few settled lives so the topology beat has company.
-   * These are scenery: they don't count toward the session counter.
+   * Light a life instantly, already settled — used for ignitions
+   * loaded from the live feed and for scenery seeds. Doesn't count
+   * toward the session counter.
    */
+  function igniteInstant(life) {
+    if (life.ignited) return;
+    life.ignite(-100);
+    life.igniteSettled = true;
+    life.seeded = true;
+    const start = life.futureStart;
+    const end = start + vertsPerBranch;
+    for (let i = start; i < end; i++) {
+      const i3 = i * 3;
+      baseColors[i3 + 0] = colorLit[i3 + 0];
+      baseColors[i3 + 1] = colorLit[i3 + 1];
+      baseColors[i3 + 2] = colorLit[i3 + 2];
+    }
+    appliedOthers = -1; // force a rewrite on the next frame
+  }
+
+  /** Pre-ignite a few settled lives so the topology beat has company. */
   function seedLit(count) {
     let picked = 0;
     for (const life of lives) {
       if (picked >= count) break;
       if (life === heroLife) continue;
       if (life.forkPos.distanceTo(heroLife.forkPos) < 4) continue;
-      life.ignite(-100);
-      life.igniteSettled = true;
-      life.seeded = true;
-      const start = life.futureStart;
-      const end = start + vertsPerBranch;
-      for (let i = start; i < end; i++) {
-        const i3 = i * 3;
-        baseColors[i3 + 0] = colorLit[i3 + 0];
-        baseColors[i3 + 1] = colorLit[i3 + 1];
-        baseColors[i3 + 2] = colorLit[i3 + 2];
-      }
+      igniteInstant(life);
       picked++;
     }
-    appliedOthers = -1; // force a rewrite on the next frame
   }
 
   // The hero life — the one the story and the first donation focus on
@@ -413,6 +420,7 @@ export function buildGalaxy({
     updateDrift,
     setReveal,
     seedLit,
+    igniteInstant,
     ignitedCount: () => lives.filter((l) => l.ignited && !l.seeded).length,
   };
 }

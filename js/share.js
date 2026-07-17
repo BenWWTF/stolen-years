@@ -1,7 +1,8 @@
 /**
- * Share clip rendering. When an ignition lands, we populate the phone
- * with a stylized story preview. Phase 2 rasterizes the real WebGL
- * frame of the branch igniting.
+ * Share stage. After an ignition the phone mockup shows the donor's
+ * clip: the real recorded video when the browser supports it, or a
+ * styled still as fallback. The share link points at this page with
+ * ?light=<id>, so the recipient lands on the donor's actual light.
  */
 export function setupShare() {
   const phoneScreen = document.getElementById("phoneScreen");
@@ -11,36 +12,45 @@ export function setupShare() {
   const shareMeta = document.getElementById("shareMeta");
 
   let lastDonation = null;
+  let clip = null; // {blob, url, ext} once the recording is ready
+  let shareUrl = null;
 
   downloadBtn.addEventListener("click", () => {
     if (!lastDonation) return;
-    const svg = buildShareSvg(lastDonation);
-    const blob = new Blob([svg], { type: "image/svg+xml" });
-    const url = URL.createObjectURL(blob);
+    let href, filename;
+    if (clip) {
+      href = clip.url;
+      filename = `stolen-years-${slug(lastDonation.name)}.${clip.ext}`;
+    } else {
+      const svg = buildShareSvg(lastDonation);
+      href = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
+      filename = `stolen-years-${slug(lastDonation.name)}.svg`;
+    }
     const a = document.createElement("a");
-    a.href = url;
-    a.download = `stolen-years-${slug(lastDonation.name)}.svg`;
+    a.href = href;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    if (!clip) setTimeout(() => URL.revokeObjectURL(href), 1000);
   });
 
   copyLinkBtn.addEventListener("click", async () => {
-    if (!lastDonation) return;
-    const url = `https://weandmecfs.org/ignited/${slug(lastDonation.name)}-${lastDonation.at}`;
+    const url = shareUrl || `${location.origin}${location.pathname}`;
     try {
       await navigator.clipboard.writeText(url);
-      shareMeta.textContent = `Copied: ${url}`;
+      shareMeta.textContent = "Link copied.";
     } catch {
       shareMeta.textContent = url;
     }
   });
 
-  return function renderShare(life, donation) {
+  function renderShare(life, donation, { pendingClip = false } = {}) {
     lastDonation = donation;
+    clip = null;
     document.getElementById("shareStage").classList.remove("is-empty");
     document.getElementById("shareEmpty").hidden = true;
+
     const who = donation.anonymous ? "An unnamed light" : donation.name;
     const detail =
       donation.kind === "action"
@@ -63,10 +73,31 @@ export function setupShare() {
       ? "@weandmecfs"
       : `@weandmecfs · via ${donation.name}`;
 
-    downloadBtn.disabled = false;
+    downloadBtn.disabled = pendingClip;
     copyLinkBtn.disabled = false;
-    shareMeta.textContent = "Your clip is ready to download.";
-  };
+    shareMeta.textContent = pendingClip
+      ? "Rendering your ten-second clip…"
+      : "Your clip is ready to download.";
+  }
+
+  function setClip(result) {
+    if (!result) {
+      // Recording failed — fall back to the SVG still
+      downloadBtn.disabled = false;
+      shareMeta.textContent = "Your clip is ready to download.";
+      return;
+    }
+    clip = result;
+    phoneScreen.innerHTML = `<video class="share-video" src="${result.url}" autoplay muted loop playsinline></video>`;
+    downloadBtn.disabled = false;
+    shareMeta.textContent = "Your clip is ready.";
+  }
+
+  function setShareUrl(url) {
+    if (url) shareUrl = url;
+  }
+
+  return { renderShare, setClip, setShareUrl };
 }
 
 function slug(s) {

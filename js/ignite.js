@@ -17,7 +17,7 @@ const COL_GIFT_HALO = 0x2d6be4;
 const COL_ACT = 0xd9f37a;
 const COL_ACT_HALO = 0xc5e866;
 
-export function setupIgnite({ galaxy, scene, onIgnite }) {
+export function setupIgnite({ galaxy, scene, onIgnite, onIgniteStart }) {
   const form = document.getElementById("igniteForm");
   const nameInput = document.getElementById("igniteName");
   const amountInput = document.getElementById("igniteAmount");
@@ -102,6 +102,7 @@ export function setupIgnite({ galaxy, scene, onIgnite }) {
     travelStart = now;
     lastDonation = donation;
     galaxy.igniteLife(life, now);
+    if (onIgniteStart) onIgniteStart(life, donation);
 
     // Color the light by kind
     const isAct = donation.kind === "action";

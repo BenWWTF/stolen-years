@@ -3,13 +3,16 @@
  *
  * Architecture:
  *   renderer + bloom  — the luminous-line look
- *   galaxy            — procedurally generated lives in one LineSegments
+ *   galaxy            — procedurally generated lives in one fat-line draw
  *   camera            — 8-beat scroll-driven keyframe animation
  *   ignite            — gift (blue) and action (lime) ignitions
- *   share             — story-clip preview
+ *   clip              — records the real 9s share video while a branch ignites
+ *   live              — Supabase-backed shared galaxy: ignitions persist
+ *                       and appear in real time for every visitor
+ *   share             — clip preview + download + personal light link
  *
- * No tracking, no analytics, no real payment processing. Phase 2 wires
- * the gift path to the real donation webhook.
+ * No tracking, no analytics. The gift path still simulates payment —
+ * wiring a real payment provider is the last open Phase 2 item.
  */
 import * as THREE from "three";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
@@ -22,6 +25,8 @@ import { buildGalaxy } from "./galaxy.js";
 import { makeCameraController } from "./camera.js";
 import { setupIgnite } from "./ignite.js";
 import { setupShare } from "./share.js";
+import { makeClipRecorder } from "./clip.js";
+import { setupLive } from "./live.js";
 import { smoothstep } from "./util.js";
 
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -88,6 +93,7 @@ const galaxy = buildGalaxy({
 });
 galaxy.material.resolution.set(window.innerWidth, window.innerHeight);
 scene.add(galaxy.object);
+galaxy.seedLit(2); // scenery, excluded from every counter
 
 // ============================================================
 // Camera controller
@@ -97,31 +103,32 @@ camCtl.aimStory(galaxy.heroLife);
 camCtl.focusOn(galaxy.heroLife.forkPos);
 
 // ============================================================
-// Share + Ignite
+// Toast
 // ============================================================
-const renderShare = setupShare();
-const igniteCtl = setupIgnite({
-  galaxy,
-  scene,
-  onIgnite: (life, donation) => {
-    renderShare(life, donation);
-    updateCounter();
-    const toast = document.getElementById("toast");
-    toast.classList.add("is-visible");
-    clearTimeout(toast._t);
-    toast._t = setTimeout(() => toast.classList.remove("is-visible"), 9000);
-  },
-});
-igniteCtl.setNow(() => clock.getElapsedTime());
+const toast = document.getElementById("toast");
+const toastText = toast.querySelector(".toast__text");
+const toastLink = toast.querySelector(".toast__link");
+function showToast(text, linkText, href, ms = 9000) {
+  toastText.textContent = text;
+  toastLink.textContent = linkText;
+  toastLink.href = href;
+  toast.classList.add("is-visible");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => toast.classList.remove("is-visible"), ms);
+}
 
 // ============================================================
-// Counter
+// Counter + milestone pulse — the count is the global campaign total
 // ============================================================
 const counterNum = document.getElementById("counterNum");
 const counterEl = document.getElementById("counter");
 const COUNTER_MILESTONE = 10; // the counter earns its place at 10 ignitions
-function updateCounter() {
-  const n = galaxy.ignitedCount();
+let count = 0;
+let milestoneAt = -1;
+
+function setCount(n) {
+  const crossed = n > count && n % 10 === 0;
+  count = n;
   counterEl.hidden = n < COUNTER_MILESTONE;
   counterNum.textContent = String(n);
   counterNum.animate(
@@ -132,7 +139,48 @@ function updateCounter() {
     ],
     { duration: 600, easing: "cubic-bezier(0.2, 0.7, 0.2, 1)" }
   );
+  // Every 10th ignition bends the whole structure for a moment
+  if (crossed && !reducedMotion) milestoneAt = clock.getElapsedTime();
 }
+
+// ============================================================
+// Clip recorder + share + live feed + ignite
+// ============================================================
+const clip = makeClipRecorder(renderer.domElement);
+const share = setupShare();
+
+const live = setupLive(galaxy, {
+  onCountChange: (n) => setCount(n),
+});
+
+let clipPromise = null;
+const igniteCtl = setupIgnite({
+  galaxy,
+  scene,
+  onIgniteStart: (life, donation) => {
+    clipPromise = clip.supported ? clip.start(donation, 9) : null;
+  },
+  onIgnite: (life, donation) => {
+    share.renderShare(life, donation, { pendingClip: !!clipPromise });
+    if (clipPromise) clipPromise.then((res) => share.setClip(res));
+    live.publish(donation).then((url) => {
+      if (url) share.setShareUrl(url);
+      else setCount(count + 1); // offline: still count locally
+    });
+    showToast("A new timeline begins", "See it", "#share");
+  },
+});
+igniteCtl.setNow(() => clock.getElapsedTime());
+
+// Load the shared galaxy, then listen for other people's ignitions
+live.load().then(async () => {
+  live.subscribe(() => clock.getElapsedTime());
+  const light = await live.resolveSharedLight();
+  if (light) {
+    const who = light.name || "An unnamed light";
+    showToast(`${who}'s light is part of this galaxy`, "See it", "#topology", 12000);
+  }
+});
 
 // ============================================================
 // Scroll progress — read inside the animate loop, no scroll listener
@@ -193,8 +241,21 @@ function frame() {
     0.58 * smoothstep(0.8, 0.97, scrollProgress);
   galaxy.setReveal(others, heroBranches);
 
+  // Milestone: the structure bends and brightens for a breath
+  let bloomBoost = 0;
+  if (milestoneAt >= 0) {
+    const k = (t - milestoneAt) / 1.8;
+    if (k >= 1) {
+      milestoneAt = -1;
+      galaxy.object.scale.y = 1;
+    } else {
+      const w = Math.sin(Math.PI * k);
+      galaxy.object.scale.y = 1 + 0.05 * w;
+      bloomBoost = 0.5 * w;
+    }
+  }
   // Ease bloom off for the wide shot so the core doesn't wash out
-  bloom.strength = BLOOM_BASE - 0.4 * smoothstep(0.8, 1, scrollProgress);
+  bloom.strength = BLOOM_BASE - 0.4 * smoothstep(0.8, 1, scrollProgress) + bloomBoost;
 
   galaxy.updateColors(t, !reducedMotion);
   if (!reducedMotion) galaxy.updateDrift(t);
@@ -210,6 +271,7 @@ function frame() {
 
   composer.render();
   css2dRenderer.render(scene, camera);
+  clip.captureFrame();
 
   if (firstFrame) {
     firstFrame = false;
@@ -221,12 +283,8 @@ function frame() {
 
 requestAnimationFrame(frame);
 
-// Pre-ignite a few lives so the topology beat has company
-galaxy.seedLit(2);
-updateCounter();
-
 console.log(
-  "%cThe Stolen Years · v2",
+  "%cThe Stolen Years · v2 · live",
   "color:#c5e866; font-size:16px; padding:6px 0;"
 );
 console.log(
