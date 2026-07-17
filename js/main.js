@@ -118,8 +118,11 @@ igniteCtl.setNow(() => clock.getElapsedTime());
 // Counter
 // ============================================================
 const counterNum = document.getElementById("counterNum");
+const counterEl = document.getElementById("counter");
+const COUNTER_MILESTONE = 10; // the counter earns its place at 10 ignitions
 function updateCounter() {
   const n = galaxy.ignitedCount();
+  counterEl.hidden = n < COUNTER_MILESTONE;
   counterNum.textContent = String(n);
   counterNum.animate(
     [

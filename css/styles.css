@@ -135,6 +135,25 @@ input, button { font: inherit; color: inherit; }
 .beat--center { justify-content: center; }
 .beat--center .beat__inner { margin: 0 auto; text-align: center; }
 
+/* Readability scrim: a soft dark pool behind centered text blocks so
+   the galaxy dims exactly where copy sits and stays bright elsewhere */
+.beat--center .beat__inner {
+  position: relative;
+}
+.beat--center .beat__inner::before {
+  content: "";
+  position: absolute;
+  inset: -14% -28%;
+  z-index: -1;
+  background: radial-gradient(
+    closest-side,
+    rgba(4, 4, 7, 0.82) 0%,
+    rgba(4, 4, 7, 0.55) 55%,
+    rgba(4, 4, 7, 0) 100%
+  );
+  pointer-events: none;
+}
+
 /* ============================================================
    Typography
    ============================================================ */
@@ -512,6 +531,7 @@ input:focus {
   justify-content: center;
   gap: 14px;
 }
+.counter[hidden] { display: none; }
 .counter__num {
   font-family: var(--display);
   font-size: clamp(56px, 7vw, 88px);
