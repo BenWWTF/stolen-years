@@ -322,22 +322,52 @@ export function buildGalaxy({ numLives = 220, galaxyRadius = 16, seed = 20260717
   const haloPosAttr = haloGeom.getAttribute("position");
   const origPositions = new Float32Array(positions);
 
+  // Base color state (what colors would be at full reveal). Ignite
+  // animations blend into these; the output buffer is base * reveal.
+  const baseColors = new Float32Array(colorDim);
+  const haloBaseColors = new Float32Array(colorDim); // halo mirrors the dim pass
+
+  // Staged reveal: with additive blending, color * 0 = invisible.
+  //   revealOthers — every life except the hero (0 on the hero beats,
+  //                  partial during the manifesto, 1 at the topology)
+  //   revealHeroBranches — the hero's stolen + future branches
+  //                        (appear at the fork beat)
+  let revealOthers = 0;
+  let revealHeroBranches = 0;
+  let appliedOthers = -1;
+  let appliedHero = -1;
+
+  function setReveal(others, heroBranches) {
+    revealOthers = others;
+    revealHeroBranches = heroBranches;
+  }
+
+  function applyBranchFactor(out, haloOut, from, to, f) {
+    const fh = f * f; // halo fades faster, keeps the wide shot from washing out
+    for (let i = from; i < to; i++) {
+      const i3 = i * 3;
+      out[i3 + 0] = baseColors[i3 + 0] * f;
+      out[i3 + 1] = baseColors[i3 + 1] * f;
+      out[i3 + 2] = baseColors[i3 + 2] * f;
+      haloOut[i3 + 0] = haloBaseColors[i3 + 0] * fh;
+      haloOut[i3 + 1] = haloBaseColors[i3 + 1] * fh;
+      haloOut[i3 + 2] = haloBaseColors[i3 + 2] * fh;
+    }
+  }
+
   /**
-   * Re-blend output colors based on each life.ignited + igniteProgress.
-   * Called per frame, but only does the math for lives that are
-   * currently animating. Settled lives are left alone.
+   * Per frame: blend running ignite animations into the base colors,
+   * then, if anything changed (ignite or reveal), rewrite the output
+   * buffers as base * reveal factor.
    */
   function updateColors(now) {
-    const out = colorAttr.array;
-    const haloOut = haloColorAttr.array;
+    let igniteDirty = false;
     for (const life of lives) {
-      if (!life.ignited) continue;
-      if (life.igniteSettled) continue;
+      if (!life.ignited || life.igniteSettled) continue;
+      igniteDirty = true;
       const elapsed = now - life.ignitionStart;
-      // Ease the ignite over ~1.4s
       const t = Math.min(1, elapsed / 1.4);
       const eased = t * t * (3 - 2 * t); // smoothstep
-      // Future branch lives at life.futureStart .. + vertsPerBranch
       const start = life.futureStart;
       const end = start + vertsPerBranch;
       for (let i = start; i < end; i++) {
@@ -345,23 +375,66 @@ export function buildGalaxy({ numLives = 220, galaxyRadius = 16, seed = 20260717
         const d0 = colorDim[i3 + 0];
         const d1 = colorDim[i3 + 1];
         const d2 = colorDim[i3 + 2];
-        const l0 = colorLit[i3 + 0];
-        const l1 = colorLit[i3 + 1];
-        const l2 = colorLit[i3 + 2];
-        out[i3 + 0] = d0 + (l0 - d0) * eased;
-        out[i3 + 1] = d1 + (l1 - d1) * eased;
-        out[i3 + 2] = d2 + (l2 - d2) * eased;
-        // Halo: a brighter, slightly more saturated version
-        haloOut[i3 + 0] = l0 * 1.4 * eased;
-        haloOut[i3 + 1] = l1 * 1.4 * eased;
-        haloOut[i3 + 2] = l2 * 1.4 * eased;
+        baseColors[i3 + 0] = d0 + (colorLit[i3 + 0] - d0) * eased;
+        baseColors[i3 + 1] = d1 + (colorLit[i3 + 1] - d1) * eased;
+        baseColors[i3 + 2] = d2 + (colorLit[i3 + 2] - d2) * eased;
+        haloBaseColors[i3 + 0] = colorLit[i3 + 0] * 1.4 * eased;
+        haloBaseColors[i3 + 1] = colorLit[i3 + 1] * 1.4 * eased;
+        haloBaseColors[i3 + 2] = colorLit[i3 + 2] * 1.4 * eased;
       }
-      if (t >= 1) {
-        life.igniteSettled = true;
+      if (t >= 1) life.igniteSettled = true;
+    }
+
+    const revealDirty =
+      Math.abs(revealOthers - appliedOthers) > 0.002 ||
+      Math.abs(revealHeroBranches - appliedHero) > 0.002;
+    if (!igniteDirty && !revealDirty) return;
+    appliedOthers = revealOthers;
+    appliedHero = revealHeroBranches;
+
+    const out = colorAttr.array;
+    const haloOut = haloColorAttr.array;
+    for (const life of lives) {
+      const isHero = life === heroLife;
+      const v0 = life.vertexStart;
+      if (isHero) {
+        // Lived branch always visible; stolen + future appear at the fork
+        applyBranchFactor(out, haloOut, v0, v0 + vertsPerBranch, 1);
+        applyBranchFactor(out, haloOut, v0 + vertsPerBranch, v0 + vertsPerBranch * 3, revealHeroBranches);
+      } else {
+        applyBranchFactor(out, haloOut, v0, v0 + vertsPerBranch * 3, revealOthers);
       }
     }
     colorAttr.needsUpdate = true;
     haloColorAttr.needsUpdate = true;
+  }
+
+  /**
+   * Pre-ignite a few settled lives so the topology beat has company.
+   * Writes into the base buffers so the staged reveal still applies.
+   */
+  function seedLit(count) {
+    let picked = 0;
+    for (const life of lives) {
+      if (picked >= count) break;
+      if (life === heroLife) continue;
+      if (life.forkPos.distanceTo(heroLife.forkPos) < 4) continue;
+      life.ignite(-100);
+      life.igniteSettled = true;
+      const start = life.futureStart;
+      const end = start + vertsPerBranch;
+      for (let i = start; i < end; i++) {
+        const i3 = i * 3;
+        baseColors[i3 + 0] = colorLit[i3 + 0];
+        baseColors[i3 + 1] = colorLit[i3 + 1];
+        baseColors[i3 + 2] = colorLit[i3 + 2];
+        haloBaseColors[i3 + 0] = colorLit[i3 + 0] * 1.4;
+        haloBaseColors[i3 + 1] = colorLit[i3 + 1] * 1.4;
+        haloBaseColors[i3 + 2] = colorLit[i3 + 2] * 1.4;
+      }
+      picked++;
+    }
+    appliedOthers = -1; // force a rewrite on the next frame
   }
 
   /**
@@ -407,6 +480,8 @@ export function buildGalaxy({ numLives = 220, galaxyRadius = 16, seed = 20260717
     igniteLife,
     updateColors,
     updateDrift,
+    setReveal,
+    seedLit,
     /** Total branches ignited in this session. */
     ignitedCount: () => lives.filter((l) => l.ignited).length,
   };

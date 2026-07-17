@@ -3,22 +3,24 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-    <title>The Stolen Years — A many-worlds donation experience</title>
+    <title>The Stolen Years · WE&amp;ME Foundation</title>
     <meta
       name="description"
-      content="One life, two worlds. Every patient lives with a ghost: the version of themselves who never got sick. Donate to ignite a future."
+      content="Every patient lives with a ghost: the self who never got sick. Ignite a future. 100% of your donation goes directly to ME/CFS research."
     />
-    <meta name="theme-color" content="#0a0a0f" />
+    <meta property="og:title" content="The Stolen Years" />
+    <meta property="og:description" content="We cannot change the past. We fund better ideas. Ignite a future at weandmecfs.org." />
+    <meta name="theme-color" content="#060609" />
 
+    <link rel="icon" type="image/png" href="./assets/brand/weme-amp-dark.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=JetBrains+Mono:wght@300;400&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Inter+Tight:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="./css/styles.css" />
 
-    <!-- Import map for Three.js — keeps the rest of the script clean -->
     <script type="importmap">
       {
         "imports": {
@@ -30,272 +32,170 @@
   </head>
 
   <body>
-    <!-- A persistent canvas behind everything -->
+    <!-- The persistent scene behind everything -->
     <canvas id="scene" aria-hidden="true"></canvas>
+    <div class="overlay" aria-hidden="true"><div class="grain"></div></div>
 
-    <!-- A dim vignette + grain that sits on top of the canvas, below content -->
-    <div class="overlay" aria-hidden="true">
-      <div class="grain"></div>
-    </div>
-
-    <!-- Top brand bar -->
     <header class="topbar" role="banner">
-      <a class="brand" href="#top" aria-label="weandmecfs.org — The Stolen Years">
-        <span class="amp">&amp;</span>
-        <span class="brand-text">
-          <span class="brand-line">weandmecfs</span>
-          <span class="brand-sub">The Stolen Years</span>
+      <a class="brand" href="#top" aria-label="WE&amp;ME Foundation, The Stolen Years">
+        <img class="brand__amp" src="./assets/brand/weme-amp-dark.png" alt="" width="26" height="37" />
+        <span class="brand__text">
+          <span class="brand__line">The Stolen Years</span>
+          <span class="brand__sub">WE&amp;ME Foundation</span>
         </span>
       </a>
-      <nav class="topnav" aria-label="Sections">
-        <a href="#idea">The idea</a>
-        <a href="#fork">The fork</a>
-        <a href="#galaxy">The galaxy</a>
-        <a href="#ignite">Ignite</a>
-        <a href="#share">Share</a>
-      </nav>
-      <a class="cta cta--small" href="#ignite">Donate</a>
+      <a class="cta cta--small" href="#ignite">Ignite a future</a>
     </header>
 
     <main>
-      <!-- § 0 — TITLE / HERO -->
-      <section id="top" class="section section--hero" data-scene="hero">
-        <div class="section__inner">
-          <p class="eyebrow">A many-worlds donation experience · July 2026</p>
-          <h1 class="title">
-            <span class="line">One life,</span>
-            <span class="line">two worlds.</span>
-          </h1>
+      <!-- BEAT 0 · Title -->
+      <section id="top" class="section beat beat--hero" data-scene="hero">
+        <div class="beat__inner">
+          <h1 class="title">The Stolen<br /><em>Years.</em></h1>
           <p class="lede">
-            Every patient lives with a ghost: the version of themselves who never
-            got sick. Scroll to meet yours — and ignite the world where they
-            are well.
-          </p>
-          <div class="scrollhint" aria-hidden="true">
-            <span>Scroll</span>
-            <span class="line-down"></span>
-          </div>
-        </div>
-      </section>
-
-      <!-- § 1 — THE IDEA (a single luminous line) -->
-      <section id="idea" class="section section--idea" data-scene="idea">
-        <div class="section__inner section__inner--right">
-          <p class="chapter">§ 01 — The idea</p>
-          <h2 class="h2">
-            A single luminous line<br />
-            <em>moving through darkness.</em>
-          </h2>
-          <p class="prose">
-            The site opens on a single line — a life. At a marked point, an
-            infection. The line splits. One branch stays bright; the other dims
-            and drifts. The camera pulls back: thousands of lines, a galaxy of
-            lives, each with its dimmed branch.
-          </p>
-          <p class="prose prose--muted">
-            The disease, shown at population scale, in one camera move. The
-            tagline lands as physics — the past is stolen, the future is not.
+            Every patient lives with a ghost:
+            the self who never got sick.
           </p>
         </div>
       </section>
 
-      <!-- § 2 — THE FORK (the split) -->
-      <section id="fork" class="section section--fork" data-scene="fork">
-        <div class="section__inner">
-          <p class="chapter">§ 02 — The mechanic</p>
-          <h2 class="h2">Ignite your branch.</h2>
-          <p class="prose">
-            Ahead of every dimmed line lies a fan of dormant futures: the
-            worlds where treatment exists. Every donation ignites one.
-          </p>
-          <ul class="legend" role="list">
-            <li><span class="dot dot--bright"></span><b>Bright line</b><span>— the life lived</span></li>
-            <li><span class="dot dot--stolen"></span><b>Stolen branch</b><span>— the world that was taken, in empathy beige</span></li>
-            <li><span class="dot dot--future"></span><b>Ignited future</b><span>— the world you make possible, in blue</span></li>
-            <li><span class="dot dot--milestone"></span><b>Milestone</b><span>— a research shift, in lime</span></li>
-          </ul>
+      <!-- BEAT 1 · A life, healthy, in motion -->
+      <section class="section beat beat--right" data-scene="life">
+        <div class="beat__inner">
+          <h2 class="h2">A life in motion.</h2>
         </div>
       </section>
 
-      <!-- § 3 — THE GALAXY -->
-      <section id="galaxy" class="section section--galaxy" data-scene="galaxy">
-        <div class="section__inner section__inner--center">
-          <p class="chapter">§ 03 — The scale</p>
-          <h2 class="h2 h2--center">
-            <em>The stolen years,</em><br />
-            at population scale.
-          </h2>
-          <p class="prose prose--center">
-            Every glowing line is a patient. Every dimmed branch is a future
-            that was supposed to happen. Each one can be re-lit — with a
-            single gift.
-          </p>
+      <!-- BEAT 2 · The infection. The fork. -->
+      <section class="section beat beat--left" data-scene="fork">
+        <div class="beat__inner">
+          <h2 class="h2">Then, an infection.</h2>
+          <p class="line">One branch keeps going.<br />The other is <em class="stolen">stolen</em>.</p>
         </div>
       </section>
 
-      <!-- § 4 — IGNITE (the donation mechanic) -->
-      <section id="ignite" class="section section--ignite" data-scene="ignite">
-        <div class="section__inner section__inner--center">
-          <p class="chapter">§ 04 — Ignite</p>
-          <h2 class="h2 h2--center">Donate. Dedicate. Ignite a branch.</h2>
-          <p class="prose prose--center">
-            Your name travels the branch as a point of light. Anonymous gifts
-            become unnamed lights. You can dedicate a branch to someone you
-            love.
+      <!-- BEAT 3 · The past is out of reach -->
+      <section class="section beat beat--right" data-scene="past">
+        <div class="beat__inner">
+          <h2 class="h2">We cannot change<br />the <em class="stolen">past.</em></h2>
+        </div>
+      </section>
+
+      <!-- BEAT 4 · The manifesto -->
+      <section class="section beat beat--center" data-scene="ideas">
+        <div class="beat__inner">
+          <p class="manifesto">
+            The future doesn't change because old ideas disappear.
+            It changes because <em>better ideas replace them.</em>
           </p>
+          <p class="manifesto__punch">We fund better ideas.</p>
+        </div>
+      </section>
+
+      <!-- BEAT 5 · Ignite -->
+      <section id="ignite" class="section beat beat--center" data-scene="ignite">
+        <div class="beat__inner beat__inner--wide">
+          <h2 class="h2 h2--center">Ignite a future.</h2>
+          <p class="line line--center">Your name travels the branch as a point of light.</p>
 
           <form class="ignite-form" id="igniteForm" novalidate>
             <div class="row">
               <label class="field">
                 <span class="label">Your name</span>
-                <input
-                  type="text"
-                  name="name"
-                  id="igniteName"
-                  placeholder="e.g. Lina"
-                  autocomplete="name"
-                  required
-                />
+                <input type="text" name="name" id="igniteName" autocomplete="name" required />
               </label>
-              <label class="field">
-                <span class="label">Donation (USD)</span>
-                <div class="amount">
-                  <button type="button" class="chip" data-amount="25">$25</button>
-                  <button type="button" class="chip" data-amount="100">$100</button>
-                  <button type="button" class="chip" data-amount="500">$500</button>
-                  <input
-                    type="number"
-                    name="amount"
-                    id="igniteAmount"
-                    min="1"
-                    step="1"
-                    placeholder="other"
-                  />
+              <div class="field">
+                <span class="label" id="giveLabel">Give (EUR)</span>
+                <div class="amount" role="group" aria-labelledby="giveLabel">
+                  <button type="button" class="chip" data-amount="25">€25</button>
+                  <button type="button" class="chip" data-amount="100">€100</button>
+                  <button type="button" class="chip" data-amount="500">€500</button>
+                  <input type="number" name="amount" id="igniteAmount" min="1" step="1" placeholder="other" aria-label="Other amount in euros" />
                 </div>
-              </label>
+              </div>
+            </div>
+
+            <div class="field">
+              <span class="label" id="actLabel">No money? Ignite anyway</span>
+              <div class="amount" role="group" aria-labelledby="actLabel">
+                <button type="button" class="chip chip--act" data-action="joining a demo">Join a demo</button>
+                <button type="button" class="chip chip--act" data-action="visiting a patient">Visit a patient</button>
+                <button type="button" class="chip chip--act" data-action="telling one person">Tell one person</button>
+              </div>
             </div>
 
             <label class="field">
               <span class="label">Dedicate this branch to <em>(optional)</em></span>
-              <input
-                type="text"
-                name="dedicate"
-                id="igniteDedicate"
-                placeholder="for Philipp, the world where you are well"
-              />
+              <input type="text" name="dedicate" id="igniteDedicate" placeholder="for Philipp, the world where you are well" />
             </label>
 
             <label class="consent">
               <input type="checkbox" id="igniteAnon" />
-              <span>Make my gift anonymous — use an unnamed light</span>
+              <span>Make my light anonymous</span>
             </label>
 
-            <button type="submit" class="cta cta--primary">
-              <span>Ignite a branch</span>
-              <span class="arrow">→</span>
-            </button>
-            <p class="fineprint">
-              100% of your donation goes directly to ME/CFS research.
-            </p>
+            <button type="submit" class="cta cta--primary">Ignite a future</button>
+            <p class="fineprint">100% of your donation goes directly to ME/CFS research.</p>
           </form>
         </div>
       </section>
 
-      <!-- § 5 — SHARE (the share clip) -->
-      <section id="share" class="section section--share" data-scene="share">
-        <div class="section__inner section__inner--center">
-          <p class="chapter">§ 05 — The share</p>
-          <h2 class="h2 h2--center">A ten-second cinematic,<br /><em>for someone who needs it.</em></h2>
-          <p class="prose prose--center">
-            After giving, every donor receives a clip of their branch
-            igniting — formatted for Instagram stories. That clip is the share
-            unit that carries the campaign.
-          </p>
+      <!-- BEAT 6 · A new timeline -->
+      <section id="share" class="section beat beat--center" data-scene="future">
+        <div class="beat__inner beat__inner--wide">
+          <h2 class="h2 h2--center">A new timeline begins.</h2>
+          <p class="line line--center">Ten seconds of it, made to travel.</p>
 
           <div class="share-stage" id="shareStage" aria-live="polite">
             <div class="phone">
               <div class="phone__notch"></div>
               <div class="phone__screen" id="phoneScreen">
-                <!-- Populated by JS after a donation -->
                 <div class="phone__placeholder">
                   <span class="placeholder-line"></span>
-                  <span class="placeholder-line"></span>
-                  <span class="placeholder-line placeholder-line--short"></span>
-                  <p>Your clip will render here after you ignite a branch.</p>
+                  <p>Your clip renders here after you ignite.</p>
                 </div>
               </div>
               <div class="phone__caption" id="phoneCaption">@weandmecfs</div>
             </div>
             <div class="share-actions">
-              <button class="cta cta--ghost" id="downloadClip" type="button" disabled>
-                Download clip
-              </button>
-              <button class="cta cta--ghost" id="copyLink" type="button" disabled>
-                Copy share link
-              </button>
-              <p class="share-meta" id="shareMeta">
-                <span class="dim">Status</span> · waiting for your gift
-              </p>
+              <button class="cta cta--ghost" id="downloadClip" type="button" disabled>Download clip</button>
+              <button class="cta cta--ghost" id="copyLink" type="button" disabled>Copy share link</button>
+              <p class="share-meta" id="shareMeta">Waiting for your light.</p>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- § 6 — MILESTONE / CLOSE -->
-      <section id="close" class="section section--close" data-scene="close">
-        <div class="section__inner section__inner--center">
-          <p class="chapter">§ 06 — Milestone</p>
-          <h2 class="h2 h2--center">The page is never the same twice.</h2>
-          <p class="prose prose--center">
-            Milestones bend the whole structure toward a brighter topology.
-            Every ignited branch adds to the shared galaxy.
+      <!-- BEAT 7 · A brighter topology -->
+      <section class="section beat beat--center beat--close" data-scene="topology">
+        <div class="beat__inner">
+          <h2 class="h2 h2--big">A brighter<br /><em class="bright">topology.</em></h2>
+          <p class="line line--center">
+            Every ignition bends the whole structure.
+            The page is never the same twice.
           </p>
 
           <div class="counter">
-            <div class="counter__row">
-              <span class="counter__num" id="counterNum">0</span>
-              <span class="counter__label">branches ignited in this session</span>
-            </div>
-            <div class="counter__bar" aria-hidden="true">
-              <div class="counter__bar-fill" id="counterBar"></div>
-              <div class="counter__bar-tick" style="left:25%"></div>
-              <div class="counter__bar-tick" style="left:50%"></div>
-              <div class="counter__bar-tick" style="left:75%"></div>
-            </div>
-            <div class="counter__legend">
-              <span>1st</span><span>2nd</span><span>3rd</span><span>4th</span>
-            </div>
+            <span class="counter__num" id="counterNum">0</span>
+            <span class="counter__label">futures ignited</span>
           </div>
 
-          <p class="lede lede--small">
-            Phase 1 is the cinematic version — live for the October 2026
-            launch window. Phase 2 wires the live donation feed so the galaxy
-            ignites in real time.
-          </p>
-
-          <a class="cta cta--primary" href="#ignite">Ignite another branch</a>
-
           <footer class="foot">
-            <span>weandmecfs.org</span>
-            <span class="dim">·</span>
-            <span>100% of your donation goes directly to research.</span>
+            <img class="foot__logo" src="./assets/brand/weme-logo-dark.png" alt="WE&amp;ME Foundation" width="120" height="101" />
+            <a class="foot__link" href="https://weandmecfs.org">weandmecfs.org</a>
           </footer>
         </div>
       </section>
     </main>
 
-    <!-- A subtle loading mask that hides the page until the first frame renders -->
     <div id="boot" class="boot" aria-hidden="true">
       <div class="boot__line"></div>
-      <p class="boot__text">Drawing the line…</p>
+      <p class="boot__text">Drawing the line</p>
     </div>
 
-    <!-- Toast that appears when a donor's branch has finished igniting,
-         prompting them to scroll to the share section. -->
     <div id="toast" class="toast" role="status" aria-live="polite">
-      <span class="toast__dot"></span>
-      <span class="toast__text">Your share is ready</span>
-      <a href="#share" class="toast__link">See your clip →</a>
+      <span class="toast__text">Your clip is ready</span>
+      <a href="#share" class="toast__link">See it</a>
     </div>
 
     <script type="module" src="./js/main.js"></script>

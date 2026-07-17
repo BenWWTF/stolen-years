@@ -1,49 +1,64 @@
 /**
- * Ignite — the donation mechanic.
+ * Ignite — the mechanic. Two ways to light a branch:
  *
- * On submit:
- *   1. Validate name + amount
- *   2. Pick a "victim" life to ignite (the hero life, or the next unignited one)
- *   3. Trigger the ignite animation in the galaxy
- *   4. Spawn a point of light that travels along the future branch
- *   5. Show a floating donor name tag in the scene
- *   6. Render the share clip preview
- *   7. Increment the counter, update the milestone bar
+ *   gift    · a donation in EUR — the light travels in futures blue
+ *   action  · a non-monetary ignition (join a demo, visit a patient,
+ *             tell one person) — the light travels in milestone lime
  *
- * No real money is moved. The "donation" is a simulation that the team
- * can wire to the real Stripe / donation platform in Phase 2.
+ * Both are simulations in this prototype. Phase 2 wires the gift path
+ * to the real donation webhook and the action path to a signup flow.
  */
 import * as THREE from "three";
 import { CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 
 const SPHERE_GEOM = new THREE.SphereGeometry(0.06, 12, 12);
+const COL_GIFT = 0xbcdcff;
+const COL_GIFT_HALO = 0x2d6be4;
+const COL_ACT = 0xd9f37a;
+const COL_ACT_HALO = 0xc5e866;
 
-export function setupIgnite({ galaxy, scene, shareEl, onIgnite }) {
+export function setupIgnite({ galaxy, scene, onIgnite }) {
   const form = document.getElementById("igniteForm");
   const nameInput = document.getElementById("igniteName");
   const amountInput = document.getElementById("igniteAmount");
   const dedicateInput = document.getElementById("igniteDedicate");
   const anonInput = document.getElementById("igniteAnon");
-  const amountChips = form.querySelectorAll(".chip");
+  const amountChips = form.querySelectorAll(".chip[data-amount]");
+  const actionChips = form.querySelectorAll(".chip[data-action]");
 
   let selectedAmount = null;
+  let selectedAction = null;
+
   amountChips.forEach((chip) => {
     chip.addEventListener("click", () => {
       amountChips.forEach((c) => c.classList.remove("is-active"));
+      actionChips.forEach((c) => c.classList.remove("is-active"));
       chip.classList.add("is-active");
       selectedAmount = parseInt(chip.dataset.amount, 10);
+      selectedAction = null;
+      amountInput.value = "";
+    });
+  });
+  actionChips.forEach((chip) => {
+    chip.addEventListener("click", () => {
+      actionChips.forEach((c) => c.classList.remove("is-active"));
+      amountChips.forEach((c) => c.classList.remove("is-active"));
+      chip.classList.add("is-active");
+      selectedAction = chip.dataset.action;
+      selectedAmount = null;
       amountInput.value = "";
     });
   });
   amountInput.addEventListener("input", () => {
     amountChips.forEach((c) => c.classList.remove("is-active"));
+    actionChips.forEach((c) => c.classList.remove("is-active"));
     selectedAmount = null;
+    selectedAction = null;
   });
 
-  // The current "traveling light" — moves along the future branch of the
-  // currently-igniting life.
+  // Traveling light + halo
   const lightMat = new THREE.MeshBasicMaterial({
-    color: 0xbcdcff,
+    color: COL_GIFT,
     transparent: true,
     opacity: 0.95,
     blending: THREE.AdditiveBlending,
@@ -53,9 +68,8 @@ export function setupIgnite({ galaxy, scene, shareEl, onIgnite }) {
   travelingLight.visible = false;
   scene.add(travelingLight);
 
-  // A larger faint halo around the traveling light
   const haloMat = new THREE.MeshBasicMaterial({
-    color: 0x5ba3e0,
+    color: COL_GIFT_HALO,
     transparent: true,
     opacity: 0.25,
     blending: THREE.AdditiveBlending,
@@ -65,7 +79,7 @@ export function setupIgnite({ galaxy, scene, shareEl, onIgnite }) {
   halo.visible = false;
   scene.add(halo);
 
-  // A CSS2D donor tag that follows the light
+  // Donor tag that follows the light
   const tagEl = document.createElement("div");
   tagEl.className = "donor-tag";
   const css2dTag = new CSS2DObject(tagEl);
@@ -75,18 +89,11 @@ export function setupIgnite({ galaxy, scene, shareEl, onIgnite }) {
   let activeLife = null;
   let travelStart = 0;
   let lastDonation = null;
-  let resolveTravel = null;
 
-  // Expose the current time as a function so the click handler can use
-  // the same clock as the animate loop.
   let _now = () => 0;
-  function currentTime() {
-    return _now();
-  }
 
   function ignite(life, donation, now) {
     if (life.ignited) {
-      // Already lit — pick the next un-ignited one
       const next = galaxy.lives.find((l) => !l.ignited);
       if (!next) return;
       return ignite(next, donation, now);
@@ -95,49 +102,44 @@ export function setupIgnite({ galaxy, scene, shareEl, onIgnite }) {
     travelStart = now;
     lastDonation = donation;
     galaxy.igniteLife(life, now);
+
+    // Color the light by kind
+    const isAct = donation.kind === "action";
+    lightMat.color.setHex(isAct ? COL_ACT : COL_GIFT);
+    haloMat.color.setHex(isAct ? COL_ACT_HALO : COL_GIFT_HALO);
+    tagEl.classList.toggle("donor-tag--act", isAct);
+
     travelingLight.visible = true;
     halo.visible = true;
     css2dTag.visible = true;
+    tagEl.classList.add("is-visible");
 
-    // Build the donor tag content
     const who = donation.anonymous ? "an unnamed light" : donation.name;
-    tagEl.innerHTML = `
-      <span>${escapeHtml(who)}</span>
-      ${
-        donation.dedicate
-          ? `<span class="dedication">for ${escapeHtml(donation.dedicate)}</span>`
-          : ""
-      }
-    `;
-
-    // Wait for the travel to finish, then resolve
-    if (resolveTravel) resolveTravel();
-    return new Promise((resolve) => {
-      resolveTravel = resolve;
-    });
+    const sub = isAct
+      ? `<span class="dedication">${escapeHtml(donation.action)}</span>`
+      : donation.dedicate
+        ? `<span class="dedication">for ${escapeHtml(donation.dedicate)}</span>`
+        : "";
+    tagEl.innerHTML = `<span>${escapeHtml(who)}</span>${sub}`;
   }
 
   function update(now) {
     if (!activeLife) return;
-    const T = 2.4; // seconds the light takes to traverse the future branch
+    const T = 2.4; // seconds to traverse the future branch
     const t = (now - travelStart) / T;
     if (t >= 1) {
       travelingLight.visible = false;
       halo.visible = false;
-      // Keep the tag visible a moment, then hide
-      setTimeout(() => (css2dTag.visible = false), 1400);
+      setTimeout(() => {
+        css2dTag.visible = false;
+        tagEl.classList.remove("is-visible");
+      }, 1400);
       const finished = activeLife;
       const donation = lastDonation;
       activeLife = null;
-      if (resolveTravel) {
-        resolveTravel();
-        resolveTravel = null;
-      }
-      // Notify the share stage
       if (onIgnite) onIgnite(finished, donation);
       return;
     }
-    // Sample position along the future branch curve
     const path = activeLife.futurePath;
     const fIdx = t * (path.length - 1);
     const i0 = Math.floor(fIdx);
@@ -150,18 +152,15 @@ export function setupIgnite({ galaxy, scene, shareEl, onIgnite }) {
     const z = a.z + (b.z - a.z) * frac;
     travelingLight.position.set(x, y, z);
     halo.position.set(x, y, z);
-    // Pulse halo
     const pulse = 1 + Math.sin(now * 6) * 0.18;
     halo.scale.setScalar(pulse);
     css2dTag.position.set(x, y + 0.25, z);
 
-    // Fade in the light at the very start so it doesn't pop in
     const fadeIn = Math.min(1, t * 6);
     lightMat.opacity = 0.95 * fadeIn;
     haloMat.opacity = 0.32 * fadeIn;
   }
 
-  // Form submit
   form.addEventListener("submit", (e) => {
     e.preventDefault();
     const name = (nameInput.value || "").trim();
@@ -170,38 +169,32 @@ export function setupIgnite({ galaxy, scene, shareEl, onIgnite }) {
     const anonymous = anonInput.checked;
 
     if (!name) {
-      nameInput.focus();
       flash(nameInput);
       return;
     }
-    if (!amount || amount < 1) {
+    if (!selectedAction && (!amount || amount < 1)) {
       flash(amountInput);
       return;
     }
 
-    const donation = { name, amount, dedicate, anonymous, at: Date.now() };
+    const donation = selectedAction
+      ? { kind: "action", name, action: selectedAction, dedicate, anonymous, at: Date.now() }
+      : { kind: "gift", name, amount, dedicate, anonymous, at: Date.now() };
 
-    // Pick a life to ignite. Prefer the hero life for the first donation;
-    // then pick the next unignited life closest to the camera.
     const target = pickTarget(galaxy);
 
-    // Smoothly scroll the camera to the ignite section if we aren't there
     const igniteEl = document.getElementById("ignite");
     igniteEl.scrollIntoView({ behavior: "smooth", block: "center" });
 
-    // Use the same time source the animate loop uses. `currentTime` is
-    // set on the module from main.js.
-    ignite(target, donation, currentTime());
+    ignite(target, donation, _now());
   });
 
   return { ignite, update, setNow: (fn) => (_now = fn) };
 }
 
 function pickTarget(galaxy) {
-  // First donation → hero life
   const ignited = galaxy.lives.filter((l) => l.ignited).length;
   if (ignited === 0) return galaxy.heroLife;
-  // Otherwise, the next unignited life
   const next = galaxy.lives.find((l) => !l.ignited);
   return next || galaxy.heroLife;
 }
@@ -209,9 +202,9 @@ function pickTarget(galaxy) {
 function flash(el) {
   el.animate(
     [
-      { boxShadow: "0 0 0 0 rgba(255,122,89,0.0)" },
-      { boxShadow: "0 0 0 4px rgba(255,122,89,0.35)" },
-      { boxShadow: "0 0 0 0 rgba(255,122,89,0.0)" },
+      { boxShadow: "0 0 0 0 rgba(45,107,228,0)" },
+      { boxShadow: "0 0 0 4px rgba(45,107,228,0.4)" },
+      { boxShadow: "0 0 0 0 rgba(45,107,228,0)" },
     ],
     { duration: 500, easing: "ease-out" }
   );
