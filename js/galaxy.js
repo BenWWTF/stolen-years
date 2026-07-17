@@ -316,6 +316,10 @@ export function buildGalaxy({
       Math.abs(revealOthers - appliedOthers) > 0.002 ||
       Math.abs(revealHeroBranches - appliedHero) > 0.002;
 
+    // The hero line stays a touch brighter than the crowd, so the
+    // original lifeline is findable in every beat, including the finale
+    const emph = 1 + 0.5 * revealOthers;
+
     if (igniteDirty || revealDirty) {
       appliedOthers = revealOthers;
       appliedHero = revealHeroBranches;
@@ -323,30 +327,38 @@ export function buildGalaxy({
         const v0 = life.vertexStart;
         if (life === heroLife) {
           // Lived line always visible; the fork's branches appear on cue
-          applyBranchFactor(out, v0, v0 + vertsPerBranch, 1);
-          applyBranchFactor(out, v0 + vertsPerBranch, v0 + life.vertexCount, revealHeroBranches);
+          applyBranchFactor(out, v0, v0 + vertsPerBranch, emph);
+          applyBranchFactor(out, v0 + vertsPerBranch, v0 + life.vertexCount, revealHeroBranches * emph);
         } else {
           applyBranchFactor(out, v0, v0 + life.vertexCount, revealOthers);
         }
       }
     }
 
-    // The hero's lived line carries a traveling pulse of light so the
-    // opening beats visibly move. Skipped under prefers-reduced-motion.
+    // A traveling pulse of light rides the hero's lived line in every
+    // beat; once the hero future is ignited, the pulse continues
+    // through the fork into the new timeline. Skipped under
+    // prefers-reduced-motion.
     if (pulse) {
-      const from = heroLife.vertexStart;
-      const head = ((now * 0.22) % 1.5) - 0.15; // loops with a pause off the end
-      for (let i = from; i < from + vertsPerBranch; i++) {
-        const k = i - from;
-        const t = (Math.floor(k / 2) + (k % 2)) / segsPerBranch;
-        const d = t - head;
-        const glow = Math.exp(-(d * d) / (2 * 0.06 * 0.06));
-        const m = 1 + 1.6 * glow;
-        const i3 = i * 3;
-        out[i3 + 0] = baseColors[i3 + 0] * m;
-        out[i3 + 1] = baseColors[i3 + 1] * m;
-        out[i3 + 2] = baseColors[i3 + 2] * m;
-      }
+      const litFuture = heroLife.ignited && heroLife.igniteSettled;
+      const span = litFuture ? 2 : 1; // lived (0..1) + ignited future (1..2)
+      const head = ((now * 0.22) % (span + 0.5)) - 0.15;
+      const strength = 1.6 + 1.2 * revealOthers; // stronger in wide shots
+      const writePulse = (from, tOffset) => {
+        for (let i = from; i < from + vertsPerBranch; i++) {
+          const k = i - from;
+          const t = tOffset + (Math.floor(k / 2) + (k % 2)) / segsPerBranch;
+          const d = t - head;
+          const glow = Math.exp(-(d * d) / (2 * 0.06 * 0.06));
+          const m = emph * (1 + strength * glow);
+          const i3 = i * 3;
+          out[i3 + 0] = baseColors[i3 + 0] * m;
+          out[i3 + 1] = baseColors[i3 + 1] * m;
+          out[i3 + 2] = baseColors[i3 + 2] * m;
+        }
+      };
+      writePulse(heroLife.vertexStart, 0);
+      if (litFuture) writePulse(heroLife.futureStart, 1);
     }
 
     colorBuffer.needsUpdate = true;

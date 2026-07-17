@@ -19,7 +19,7 @@ const KEYFRAMES = [
   { t: 0.143, pos: [2.4, 0.4, 6.0],   look: [0, 0, 0], roll: -0.03, fov: 50 },
   { t: 0.286, pos: [0.0, 0.2, 4.6],   look: [0, 0, 0], roll: 0,     fov: 46 },
   { t: 0.429, pos: [-2.4, -1.3, 7.5], look: [0, -0.4, 0], roll: -0.04, fov: 50 },
-  { t: 0.571, pos: [0.0, 3.0, 22.0],  look: [0, 0, 0], roll: 0,     fov: 52 },
+  { t: 0.571, pos: [0.0, 3.0, 22.0],  look: [0, 1.6, 0], roll: 0,   fov: 52 },
   { t: 0.714, pos: [3.0, 0.5, 5.0],   look: [0, 0, 0], roll: 0.02,  fov: 42 },
   { t: 0.857, pos: [0.5, 0.8, 5.5],   look: [0, 0, 0], roll: 0,     fov: 44 },
   { t: 1.0,   pos: [0.0, 26.0, 20.0], look: [0, 7, 0], roll: 0,     fov: 55 },
@@ -96,28 +96,34 @@ export function makeCameraController(camera) {
    * `lift` shifts the camera down so the subject rides the upper part
    * of the frame — used in portrait, where the narrow horizontal FOV
    * would otherwise drop the line straight through the text.
+   *
+   * `xs` scales the horizontal offsets: a portrait frame is only about
+   * a fifth as wide in world units, so desktop-tuned x offsets push
+   * the subject out of frame entirely.
    */
-  function aimStory(hero, lift = 0) {
+  function aimStory(hero, lift = 0, xs = 1) {
     const fork = hero.forkPos;
     const mid = hero.livedPath[Math.floor(hero.livedPath.length / 2)];
 
+    // The hero line is long and horizontal, so beat 0 keeps its full
+    // offsets: shifting only changes which part of the line you see
     KEYFRAMES[0].pos = [fork.x - 1.0, fork.y + 0.6 - lift, fork.z + 7.0];
     KEYFRAMES[0].look = [fork.x - 2.9, fork.y + 0.55 - lift, fork.z];
 
     // Closer beats get proportionally less lift or the subject
     // leaves the frame entirely
     const l1 = lift * 0.5;
-    KEYFRAMES[1].pos = [mid.x + 2.2, mid.y + 0.4 - l1, mid.z + 5.2];
-    KEYFRAMES[1].look = [mid.x + 1.0, mid.y - l1, mid.z];
+    KEYFRAMES[1].pos = [mid.x + 2.2 * xs, mid.y + 0.4 - l1, mid.z + 5.2];
+    KEYFRAMES[1].look = [mid.x + 1.0 * xs, mid.y - l1, mid.z];
 
     const l2 = lift * 0.3;
-    KEYFRAMES[2].pos = [fork.x + 0.4, fork.y + 0.2 - l2, fork.z + 4.6];
-    KEYFRAMES[2].look = [fork.x + 0.9, fork.y - l2, fork.z];
+    KEYFRAMES[2].pos = [fork.x + 0.4 * xs, fork.y + 0.2 - l2, fork.z + 4.6];
+    KEYFRAMES[2].look = [fork.x + 0.9 * xs, fork.y - l2, fork.z];
 
     const l3 = lift * 0.25;
     const stolenMid = hero.stolenPath[13];
-    KEYFRAMES[3].pos = [stolenMid.x + 0.3, stolenMid.y + 0.4 - l3, stolenMid.z + 5.6];
-    KEYFRAMES[3].look = [stolenMid.x + 1.0, stolenMid.y - 0.35 - l3, stolenMid.z];
+    KEYFRAMES[3].pos = [stolenMid.x + 0.3 * xs, stolenMid.y + 0.4 - l3, stolenMid.z + 5.6];
+    KEYFRAMES[3].look = [stolenMid.x + 1.0 * xs, stolenMid.y - 0.35 - l3, stolenMid.z];
   }
 
   return { update, focusOn, aimStory };

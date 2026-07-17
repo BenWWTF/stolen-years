@@ -688,6 +688,16 @@ input:focus {
 .toast__link:hover { background: #3d7bf0; }
 
 /* ============================================================
+   Mobile display scale — the desktop clamps bottom out too small
+   for a cinematic page on a phone
+   ============================================================ */
+@media (max-width: 640px) {
+  .h2 { font-size: 44px; }
+  .h2--big { font-size: 54px; }
+  .manifesto { font-size: 30px; }
+}
+
+/* ============================================================
    Reduced motion
    ============================================================ */
 @media (prefers-reduced-motion: reduce) {
