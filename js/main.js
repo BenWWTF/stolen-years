@@ -195,8 +195,9 @@ function frame() {
 
   igniteCtl.update(t);
 
-  // Whole-galaxy rotation tied to scroll — the "one camera move" feel
-  const rotY = scrollProgress * Math.PI * 0.4 - 0.2;
+  // Whole-galaxy rotation tied to scroll — gentle, so the field of
+  // timelines keeps reading left-to-right
+  const rotY = scrollProgress * Math.PI * 0.12 - 0.06;
   galaxy.object.rotation.y += (rotY - galaxy.object.rotation.y) * 0.08;
   const rotX = Math.sin(scrollProgress * Math.PI) * 0.05;
   galaxy.object.rotation.x += (rotX - galaxy.object.rotation.x) * 0.08;

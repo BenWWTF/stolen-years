@@ -96,10 +96,9 @@ export function makeCameraController(camera) {
   function aimStory(hero) {
     const fork = hero.forkPos;
     const mid = hero.livedPath[Math.floor(hero.livedPath.length / 2)];
-    const stolenEnd = hero.stolenPath[hero.stolenPath.length - 1];
 
-    KEYFRAMES[0].pos = [fork.x - 1.2, fork.y + 0.5, fork.z + 6.8];
-    KEYFRAMES[0].look = [fork.x - 1.6, fork.y, fork.z];
+    KEYFRAMES[0].pos = [fork.x - 1.0, fork.y + 0.6, fork.z + 7.0];
+    KEYFRAMES[0].look = [fork.x - 2.9, fork.y + 0.55, fork.z];
 
     KEYFRAMES[1].pos = [mid.x + 2.2, mid.y + 0.4, mid.z + 5.2];
     KEYFRAMES[1].look = [mid.x + 1.0, mid.y, mid.z];
@@ -107,8 +106,9 @@ export function makeCameraController(camera) {
     KEYFRAMES[2].pos = [fork.x + 0.4, fork.y + 0.2, fork.z + 4.6];
     KEYFRAMES[2].look = [fork.x + 0.9, fork.y, fork.z];
 
-    KEYFRAMES[3].pos = [stolenEnd.x - 2.2, stolenEnd.y - 1.0, stolenEnd.z + 6.0];
-    KEYFRAMES[3].look = [stolenEnd.x - 0.8, stolenEnd.y - 0.2, stolenEnd.z];
+    const stolenMid = hero.stolenPath[13];
+    KEYFRAMES[3].pos = [stolenMid.x + 0.3, stolenMid.y + 0.4, stolenMid.z + 5.6];
+    KEYFRAMES[3].look = [stolenMid.x + 1.0, stolenMid.y - 0.35, stolenMid.z];
   }
 
   return { update, focusOn, aimStory };

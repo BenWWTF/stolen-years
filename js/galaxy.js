@@ -1,97 +1,111 @@
 /**
- * The galaxy — a population of "lives".
+ * The galaxy — a population of "lives", drawn as timelines.
  *
- * A life is a luminous line through dark space. At a marked point, an
- * infection — the line splits into a stolen branch (empathy beige) and a
- * future branch (futures blue). When a donor gives, the future branch
- * ignites: it transitions from dim to bright, and a point of light with
- * the donor's name travels along it.
+ * Visual grammar (matches the Branching concept diagram):
+ *   time flows left to right (+x)
+ *   lived line    — a comet trail: dark in the far past, brightening
+ *                   white toward the fork (the present)
+ *   stolen branch — empathy beige, droops downward and fades to black
+ *                   at its tip (dims and drifts)
+ *   future fan    — three dormant blue strands rising ahead of the
+ *                   fork; a donation ignites the middle one
  *
- * We pack all lives into a single BufferGeometry as LineSegments so the
- * GPU only has one draw call to render the whole galaxy.
- *
- * The "ignite" animation updates vertex colors over a ~1.2s ease —
- * bright futures mix in over the dim base color.
+ * All lives are packed into a single LineSegments geometry (one draw
+ * call). With additive blending, color * 0 = invisible, which drives
+ * both the per-vertex gradients and the staged scroll reveal.
  */
 import * as THREE from "three";
-import { sampleCurve, range } from "./util.js";
+import { range } from "./util.js";
 
 const COL_LIVED = new THREE.Color(0xffffff);
 const COL_STOLEN = new THREE.Color(0xd4b896); // empathy beige
-const COL_STOLEN_DIM = new THREE.Color(0x8a7a5e);
 const COL_FUTURE = new THREE.Color(0x5ba3e0); // futures blue
 const COL_FUTURE_BRIGHT = new THREE.Color(0xbcdcff);
-const COL_MILESTONE = new THREE.Color(0xc5e866);
 
-const POINTS_PER_BRANCH = 22; // sampling resolution for each segment
+const POINTS_PER_BRANCH = 22;
+const FUTURE_STRANDS = 3; // the fan of dormant futures
+const BRANCHES_PER_LIFE = 2 + FUTURE_STRANDS;
 
-/**
- * One life, with its three branches, and a flag for whether the future
- * branch has been ignited.
- */
+/** Sample a mostly-straight path with a vertical/lateral shape offset. */
+function buildPath(start, dir, len, steps, shape) {
+  const pts = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const p = start.clone().add(dir.clone().multiplyScalar(len * t));
+    const o = shape(t);
+    p.y += o.y;
+    p.z += o.z;
+    pts.push(p);
+  }
+  return pts;
+}
+
 class Life {
   constructor(index, rng, galaxyRadius) {
     this.index = index;
     this.ignited = false;
-    this.ignitionStart = -1; // seconds (set on ignite)
-    this.milestone = false; // does this life mark a research milestone?
+    this.ignitionStart = -1;
 
-    // Place somewhere in a thick disk-ish volume
+    // Place the fork somewhere in a flattened volume
     const phi = rng() * Math.PI * 2;
-    const r = Math.cbrt(rng()) * galaxyRadius;
-    const yJitter = (rng() - 0.5) * galaxyRadius * 0.5;
-    this.center = new THREE.Vector3(
+    const r = Math.sqrt(rng()) * galaxyRadius;
+    const fork = new THREE.Vector3(
       Math.cos(phi) * r,
-      yJitter,
-      Math.sin(phi) * r
+      (rng() - 0.5) * galaxyRadius * 0.35,
+      Math.sin(phi) * r * 0.8
     );
 
-    // Direction the life "moves" through space
-    this.direction = new THREE.Vector3(
-      rng() - 0.5,
-      (rng() - 0.5) * 0.4,
-      rng() - 0.5
+    // Every life flows the same general direction: left to right
+    const dir = new THREE.Vector3(
+      1,
+      (rng() - 0.5) * 0.1,
+      (rng() - 0.5) * 0.3
     ).normalize();
 
-    this.length = range(rng, 2.4, 5.2);
-    // Where along the life the infection happens
-    this.forkT = range(rng, 0.55, 0.78);
+    this.length = range(rng, 7, 12);
+    this.forkT = range(rng, 0.5, 0.68);
 
-    // Build the three branches
-    const start = this.center.clone();
-    const fork = start
-      .clone()
-      .add(this.direction.clone().multiplyScalar(this.length * this.forkT));
+    const livedLen = this.length * this.forkT;
+    const start = fork.clone().sub(dir.clone().multiplyScalar(livedLen));
 
-    // Lived: from start to fork
-    this.livedPath = sampleCurve(start, fork, POINTS_PER_BRANCH, rng, 0.35);
+    // Lived: one gentle arc, flat at both ends so the fork connects cleanly
+    const amp = range(rng, 0.15, 0.45) * (rng() < 0.5 ? -1 : 1);
+    const zAmp = range(rng, 0.05, 0.25) * (rng() < 0.5 ? -1 : 1);
+    this.livedPath = buildPath(start, dir, livedLen, POINTS_PER_BRANCH, (t) => ({
+      y: Math.sin(Math.PI * t) * amp,
+      z: Math.sin(Math.PI * t) * zAmp,
+    }));
 
-    // Stolen: from fork, drifts in a slightly off direction
-    const stolenDir = this.direction
-      .clone()
-      .add(new THREE.Vector3((rng() - 0.5) * 0.6, -0.3, (rng() - 0.5) * 0.6))
-      .normalize();
-    const stolenEnd = fork
-      .clone()
-      .add(stolenDir.multiplyScalar(this.length * (1 - this.forkT) * 0.9));
-    this.stolenPath = sampleCurve(fork, stolenEnd, POINTS_PER_BRANCH, rng, 0.5);
+    const restLen = this.length * (1 - this.forkT);
 
-    // Future: from fork, drifts in another direction
-    const futureDir = this.direction
-      .clone()
-      .add(new THREE.Vector3((rng() - 0.5) * 0.6, 0.3, (rng() - 0.5) * 0.6))
-      .normalize();
-    const futureEnd = fork
-      .clone()
-      .add(futureDir.multiplyScalar(this.length * (1 - this.forkT) * 1.0));
-    this.futurePath = sampleCurve(fork, futureEnd, POINTS_PER_BRANCH, rng, 0.5);
+    // Stolen: keeps flowing, but droops down and drifts sideways
+    const droop = range(rng, 1.2, 2.4);
+    const zDrift = (rng() - 0.5) * 1.2;
+    this.stolenPath = buildPath(fork, dir, restLen * 0.9, POINTS_PER_BRANCH, (t) => ({
+      y: -droop * t * t,
+      z: zDrift * t,
+    }));
+
+    // Future fan: strand 0 is the middle one (the one that ignites)
+    const rises = [range(rng, 0.9, 1.3), range(rng, 0.4, 0.6), range(rng, 1.7, 2.1)];
+    const spreads = [0, -range(rng, 0.4, 0.7), range(rng, 0.4, 0.7)];
+    this.futurePaths = [];
+    for (let k = 0; k < FUTURE_STRANDS; k++) {
+      this.futurePaths.push(
+        buildPath(fork, dir, restLen * (1 - k * 0.08), POINTS_PER_BRANCH, (t) => ({
+          y: rises[k] * Math.pow(t, 1.7),
+          z: spreads[k] * t,
+        }))
+      );
+    }
+    this.futurePath = this.futurePaths[0]; // the traveling light rides this one
 
     this.forkPos = fork.clone();
-    this.futureEnd = futureEnd.clone();
+    this.futureEnd = this.futurePaths[0][POINTS_PER_BRANCH].clone();
 
-    // Bookkeeping for vertex color updates
-    this.vertexStart = -1; // index into the geometry's color buffer
+    this.vertexStart = -1;
     this.vertexCount = 0;
+    this.futureStart = -1;
   }
 
   ignite(now) {
@@ -101,14 +115,6 @@ class Life {
   }
 }
 
-/**
- * Pack all lives into one LineSegments geometry.
- * The geometry has three "layers" of color per vertex:
- *   colorDim     — the unignited look
- *   colorLit     — the ignited look (only relevant for future branch)
- *   igniteFlag   — 1 if this vertex is on a future branch, 0 otherwise
- * We blend colorDim with colorLit using igniteFlag * lifeProgress.
- */
 export function buildGalaxy({ numLives = 220, galaxyRadius = 16, seed = 20260717 } = {}) {
   // Seeded RNG so the scene is reproducible
   let s = seed >>> 0;
@@ -125,146 +131,92 @@ export function buildGalaxy({ numLives = 220, galaxyRadius = 16, seed = 20260717
     lives.push(new Life(i, rng, galaxyRadius));
   }
 
-  // Each life contributes 3 branches, each branch is POINTS_PER_BRANCH+1 points.
-  // As LineSegments we need 2 vertices per segment.
-  // segments_per_branch = POINTS_PER_BRANCH
-  // vertices_per_branch = 2 * POINTS_PER_BRANCH
-  // total vertices per life = 3 * 2 * POINTS_PER_BRANCH = 132
   const segsPerBranch = POINTS_PER_BRANCH;
   const vertsPerBranch = segsPerBranch * 2;
-  const vertsPerLife = vertsPerBranch * 3;
+  const vertsPerLife = vertsPerBranch * BRANCHES_PER_LIFE;
   const totalVerts = vertsPerLife * numLives;
 
   const positions = new Float32Array(totalVerts * 3);
   const colorDim = new Float32Array(totalVerts * 3);
   const colorLit = new Float32Array(totalVerts * 3);
-  const igniteFlag = new Float32Array(totalVerts);
-
-  // Output color buffer — what the material reads. Starts equal to colorDim.
   const colors = new Float32Array(totalVerts * 3);
 
   let cursor = 0;
 
-  function emitBranch(path, isFuture) {
-    const startIdx = cursor;
+  /**
+   * Emit one branch. dimFn/litFn map t (0..1 along the branch) to a
+   * THREE.Color-like {r,g,b} multiplied brightness.
+   */
+  function emitBranch(path, dimFn, litFn) {
     for (let i = 0; i < segsPerBranch; i++) {
       const a = path[i];
       const b = path[i + 1];
+      const ta = i / segsPerBranch;
+      const tb = (i + 1) / segsPerBranch;
       positions[cursor * 3 + 0] = a.x;
       positions[cursor * 3 + 1] = a.y;
       positions[cursor * 3 + 2] = a.z;
       positions[(cursor + 1) * 3 + 0] = b.x;
       positions[(cursor + 1) * 3 + 1] = b.y;
       positions[(cursor + 1) * 3 + 2] = b.z;
-
-      // Dim/lit base colors depend on branch type
-      let dimA, dimB, litA, litB;
-      if (isFuture) {
-        // Future branch: dim blue → bright blue
-        dimA = dimB = COL_FUTURE;
-        litA = litB = COL_FUTURE_BRIGHT;
-      } else if (path === path /* lived vs stolen handled below */ && path[0] === path[0]) {
-        // We'll handle lived vs stolen via the explicit branch argument
-      }
-
-      // We need to distinguish lived and stolen. Use a sentinel approach:
-      // pass the role via the closure below.
+      const da = dimFn(ta);
+      const db = dimFn(tb);
+      colorDim[cursor * 3 + 0] = da.r;
+      colorDim[cursor * 3 + 1] = da.g;
+      colorDim[cursor * 3 + 2] = da.b;
+      colorDim[(cursor + 1) * 3 + 0] = db.r;
+      colorDim[(cursor + 1) * 3 + 1] = db.g;
+      colorDim[(cursor + 1) * 3 + 2] = db.b;
+      const la = litFn(ta);
+      const lb = litFn(tb);
+      colorLit[cursor * 3 + 0] = la.r;
+      colorLit[cursor * 3 + 1] = la.g;
+      colorLit[cursor * 3 + 2] = la.b;
+      colorLit[(cursor + 1) * 3 + 0] = lb.r;
+      colorLit[(cursor + 1) * 3 + 1] = lb.g;
+      colorLit[(cursor + 1) * 3 + 2] = lb.b;
       cursor += 2;
     }
-    return startIdx;
   }
 
-  // The above generic branch helper is awkward — let's just inline all 3.
-  cursor = 0;
+  const scaled = (col, f) => ({ r: col.r * f, g: col.g * f, b: col.b * f });
+  const smooth = (a, b, t) => {
+    const x = Math.min(1, Math.max(0, (t - a) / (b - a)));
+    return x * x * (3 - 2 * x);
+  };
+
   for (const life of lives) {
     life.vertexStart = cursor;
 
-    // 1. LIVED branch — always bright white, no ignite animation
-    for (let i = 0; i < segsPerBranch; i++) {
-      const a = life.livedPath[i];
-      const b = life.livedPath[i + 1];
-      positions[cursor * 3 + 0] = a.x;
-      positions[cursor * 3 + 1] = a.y;
-      positions[cursor * 3 + 2] = a.z;
-      positions[(cursor + 1) * 3 + 0] = b.x;
-      positions[(cursor + 1) * 3 + 1] = b.y;
-      positions[(cursor + 1) * 3 + 2] = b.z;
-      colorDim[cursor * 3 + 0] = COL_LIVED.r * 0.85;
-      colorDim[cursor * 3 + 1] = COL_LIVED.g * 0.85;
-      colorDim[cursor * 3 + 2] = COL_LIVED.b * 0.85;
-      colorDim[(cursor + 1) * 3 + 0] = COL_LIVED.r * 0.85;
-      colorDim[(cursor + 1) * 3 + 1] = COL_LIVED.g * 0.85;
-      colorDim[(cursor + 1) * 3 + 2] = COL_LIVED.b * 0.85;
-      colorLit[cursor * 3 + 0] = COL_LIVED.r;
-      colorLit[cursor * 3 + 1] = COL_LIVED.g;
-      colorLit[cursor * 3 + 2] = COL_LIVED.b;
-      colorLit[(cursor + 1) * 3 + 0] = COL_LIVED.r;
-      colorLit[(cursor + 1) * 3 + 1] = COL_LIVED.g;
-      colorLit[(cursor + 1) * 3 + 2] = COL_LIVED.b;
-      igniteFlag[cursor] = 0;
-      igniteFlag[cursor + 1] = 0;
-      cursor += 2;
-    }
+    // 1. LIVED — comet trail: dark far past, bright at the fork
+    emitBranch(
+      life.livedPath,
+      (t) => scaled(COL_LIVED, 0.85 * smooth(0, 0.45, t)),
+      (t) => scaled(COL_LIVED, smooth(0, 0.45, t))
+    );
 
-    // 2. STOLEN branch — beige, dim, never ignites
-    for (let i = 0; i < segsPerBranch; i++) {
-      const a = life.stolenPath[i];
-      const b = life.stolenPath[i + 1];
-      positions[cursor * 3 + 0] = a.x;
-      positions[cursor * 3 + 1] = a.y;
-      positions[cursor * 3 + 2] = a.z;
-      positions[(cursor + 1) * 3 + 0] = b.x;
-      positions[(cursor + 1) * 3 + 1] = b.y;
-      positions[(cursor + 1) * 3 + 2] = b.z;
-      colorDim[cursor * 3 + 0] = COL_STOLEN_DIM.r;
-      colorDim[cursor * 3 + 1] = COL_STOLEN_DIM.g;
-      colorDim[cursor * 3 + 2] = COL_STOLEN_DIM.b;
-      colorDim[(cursor + 1) * 3 + 0] = COL_STOLEN_DIM.r;
-      colorDim[(cursor + 1) * 3 + 1] = COL_STOLEN_DIM.g;
-      colorDim[(cursor + 1) * 3 + 2] = COL_STOLEN_DIM.b;
-      colorLit[cursor * 3 + 0] = COL_STOLEN.r;
-      colorLit[cursor * 3 + 1] = COL_STOLEN.g;
-      colorLit[cursor * 3 + 2] = COL_STOLEN.b;
-      colorLit[(cursor + 1) * 3 + 0] = COL_STOLEN.r;
-      colorLit[(cursor + 1) * 3 + 1] = COL_STOLEN.g;
-      colorLit[(cursor + 1) * 3 + 2] = COL_STOLEN.b;
-      igniteFlag[cursor] = 0;
-      igniteFlag[cursor + 1] = 0;
-      cursor += 2;
-    }
+    // 2. STOLEN — beige, fading to black at the tip
+    emitBranch(
+      life.stolenPath,
+      (t) => scaled(COL_STOLEN, 0.55 * Math.pow(1 - t, 1.6)),
+      (t) => scaled(COL_STOLEN, 0.55 * Math.pow(1 - t, 1.6))
+    );
 
-    // 3. FUTURE branch — blue, dim until ignited
-    for (let i = 0; i < segsPerBranch; i++) {
-      const a = life.futurePath[i];
-      const b = life.futurePath[i + 1];
-      positions[cursor * 3 + 0] = a.x;
-      positions[cursor * 3 + 1] = a.y;
-      positions[cursor * 3 + 2] = a.z;
-      positions[(cursor + 1) * 3 + 0] = b.x;
-      positions[(cursor + 1) * 3 + 1] = b.y;
-      positions[(cursor + 1) * 3 + 2] = b.z;
-      colorDim[cursor * 3 + 0] = COL_FUTURE.r * 0.18;
-      colorDim[cursor * 3 + 1] = COL_FUTURE.g * 0.18;
-      colorDim[cursor * 3 + 2] = COL_FUTURE.b * 0.18;
-      colorDim[(cursor + 1) * 3 + 0] = COL_FUTURE.r * 0.18;
-      colorDim[(cursor + 1) * 3 + 1] = COL_FUTURE.g * 0.18;
-      colorDim[(cursor + 1) * 3 + 2] = COL_FUTURE.b * 0.18;
-      colorLit[cursor * 3 + 0] = COL_FUTURE_BRIGHT.r;
-      colorLit[cursor * 3 + 1] = COL_FUTURE_BRIGHT.g;
-      colorLit[cursor * 3 + 2] = COL_FUTURE_BRIGHT.b;
-      colorLit[(cursor + 1) * 3 + 0] = COL_FUTURE_BRIGHT.r;
-      colorLit[(cursor + 1) * 3 + 1] = COL_FUTURE_BRIGHT.g;
-      colorLit[(cursor + 1) * 3 + 2] = COL_FUTURE_BRIGHT.b;
-      igniteFlag[cursor] = 1;
-      igniteFlag[cursor + 1] = 1;
-      cursor += 2;
+    // 3. FUTURE FAN — strand 0 ignites; the outer strands stay dormant
+    life.futureStart = cursor;
+    emitBranch(
+      life.futurePaths[0],
+      (t) => scaled(COL_FUTURE, 0.2 * (0.85 + 0.15 * t)),
+      (t) => scaled(COL_FUTURE_BRIGHT, 0.7 + 0.3 * t)
+    );
+    for (let k = 1; k < FUTURE_STRANDS; k++) {
+      const dimK = (t) => scaled(COL_FUTURE, 0.09 * (1 - 0.25 * t));
+      emitBranch(life.futurePaths[k], dimK, dimK);
     }
 
     life.vertexCount = cursor - life.vertexStart;
-    life.futureStart = life.vertexStart + vertsPerBranch * 2; // future branch starts here
   }
 
-  // Initial output colors = dim
   colors.set(colorDim);
 
   const geometry = new THREE.BufferGeometry();
@@ -278,19 +230,12 @@ export function buildGalaxy({ numLives = 220, galaxyRadius = 16, seed = 20260717
     opacity: 0.95,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
-    linewidth: 1, // ignored on most platforms, see note below
   });
 
   const lines = new THREE.LineSegments(geometry, material);
-  lines.frustumCulled = false; // galaxy always visible at some camera position
+  lines.frustumCulled = false;
 
-  // ----------------------------------------------------------------
-  // Glow halo — render a second pass with a darker, wider look
-  // by drawing slightly enlarged line geometry with lower opacity.
-  // For the prototype we keep it simple: a second LineSegments mesh
-  // at a slight scale with additive blending and a different color
-  // mix. This avoids needing fat-line shaders / Line2.
-  // ----------------------------------------------------------------
+  // Glow halo — the same geometry at a slight scale, low opacity
   const haloGeom = geometry.clone();
   const haloMat = new THREE.LineBasicMaterial({
     vertexColors: true,
@@ -304,17 +249,15 @@ export function buildGalaxy({ numLives = 220, galaxyRadius = 16, seed = 20260717
   halo.frustumCulled = false;
   lines.add(halo);
 
-  // ----------------------------------------------------------------
-  // Drift data — per-life slow noise so the galaxy feels alive
-  // ----------------------------------------------------------------
-  const driftData = lives.map((life) => ({
+  // Drift data — slow per-life breathing so the field never freezes
+  const driftData = lives.map(() => ({
     seed: rng() * 1000,
     speed: 0.05 + rng() * 0.1,
-    amp: 0.05 + rng() * 0.08,
+    amp: 0.04 + rng() * 0.07,
   }));
 
   // ----------------------------------------------------------------
-  // Public API
+  // Color state + staged reveal
   // ----------------------------------------------------------------
   const colorAttr = geometry.getAttribute("color");
   const haloColorAttr = haloGeom.getAttribute("color");
@@ -322,16 +265,9 @@ export function buildGalaxy({ numLives = 220, galaxyRadius = 16, seed = 20260717
   const haloPosAttr = haloGeom.getAttribute("position");
   const origPositions = new Float32Array(positions);
 
-  // Base color state (what colors would be at full reveal). Ignite
-  // animations blend into these; the output buffer is base * reveal.
   const baseColors = new Float32Array(colorDim);
-  const haloBaseColors = new Float32Array(colorDim); // halo mirrors the dim pass
+  const haloBaseColors = new Float32Array(colorDim);
 
-  // Staged reveal: with additive blending, color * 0 = invisible.
-  //   revealOthers — every life except the hero (0 on the hero beats,
-  //                  partial during the manifesto, 1 at the topology)
-  //   revealHeroBranches — the hero's stolen + future branches
-  //                        (appear at the fork beat)
   let revealOthers = 0;
   let revealHeroBranches = 0;
   let appliedOthers = -1;
@@ -355,11 +291,6 @@ export function buildGalaxy({ numLives = 220, galaxyRadius = 16, seed = 20260717
     }
   }
 
-  /**
-   * Per frame: blend running ignite animations into the base colors,
-   * then, if anything changed (ignite or reveal), rewrite the output
-   * buffers as base * reveal factor.
-   */
   function updateColors(now) {
     let igniteDirty = false;
     for (const life of lives) {
@@ -367,9 +298,9 @@ export function buildGalaxy({ numLives = 220, galaxyRadius = 16, seed = 20260717
       igniteDirty = true;
       const elapsed = now - life.ignitionStart;
       const t = Math.min(1, elapsed / 1.4);
-      const eased = t * t * (3 - 2 * t); // smoothstep
+      const eased = t * t * (3 - 2 * t);
       const start = life.futureStart;
-      const end = start + vertsPerBranch;
+      const end = start + vertsPerBranch; // strand 0 only
       for (let i = start; i < end; i++) {
         const i3 = i * 3;
         const d0 = colorDim[i3 + 0];
@@ -395,23 +326,43 @@ export function buildGalaxy({ numLives = 220, galaxyRadius = 16, seed = 20260717
     const out = colorAttr.array;
     const haloOut = haloColorAttr.array;
     for (const life of lives) {
-      const isHero = life === heroLife;
       const v0 = life.vertexStart;
-      if (isHero) {
-        // Lived branch always visible; stolen + future appear at the fork
+      if (life === heroLife) {
+        // Lived line always visible; the fork's branches appear on cue
         applyBranchFactor(out, haloOut, v0, v0 + vertsPerBranch, 1);
-        applyBranchFactor(out, haloOut, v0 + vertsPerBranch, v0 + vertsPerBranch * 3, revealHeroBranches);
+        applyBranchFactor(out, haloOut, v0 + vertsPerBranch, v0 + life.vertexCount, revealHeroBranches);
       } else {
-        applyBranchFactor(out, haloOut, v0, v0 + vertsPerBranch * 3, revealOthers);
+        applyBranchFactor(out, haloOut, v0, v0 + life.vertexCount, revealOthers);
       }
     }
     colorAttr.needsUpdate = true;
     haloColorAttr.needsUpdate = true;
   }
 
+  function updateDrift(t) {
+    const arr = posAttr.array;
+    const haloArr = haloPosAttr.array;
+    for (let li = 0; li < lives.length; li++) {
+      const life = lives[li];
+      const d = driftData[li];
+      const offset = Math.sin(t * d.speed + d.seed) * d.amp;
+      const vStart = life.vertexStart * 3;
+      for (let i = 0; i < life.vertexCount; i++) {
+        const idx = vStart + i * 3;
+        arr[idx + 2] = origPositions[idx + 2] + offset;
+        haloArr[idx + 2] = origPositions[idx + 2] + offset;
+      }
+    }
+    posAttr.needsUpdate = true;
+    haloPosAttr.needsUpdate = true;
+  }
+
+  function igniteLife(life, now) {
+    life.ignite(now);
+  }
+
   /**
    * Pre-ignite a few settled lives so the topology beat has company.
-   * Writes into the base buffers so the staged reveal still applies.
    */
   function seedLit(count) {
     let picked = 0;
@@ -437,37 +388,7 @@ export function buildGalaxy({ numLives = 220, galaxyRadius = 16, seed = 20260717
     appliedOthers = -1; // force a rewrite on the next frame
   }
 
-  /**
-   * Subtle drift of the whole galaxy — a slow breathing motion so the
-   * scene never feels frozen.
-   */
-  function updateDrift(t) {
-    const arr = posAttr.array;
-    const haloArr = haloPosAttr.array;
-    for (let li = 0; li < lives.length; li++) {
-      const life = lives[li];
-      const d = driftData[li];
-      const offset = Math.sin(t * d.speed + d.seed) * d.amp;
-      const vStart = life.vertexStart * 3;
-      for (let i = 0; i < life.vertexCount; i++) {
-        const idx = vStart + i * 3;
-        const op = origPositions[idx + 0];
-        // Only apply a gentle z-drift (avoids breaking the "luminous line" reading)
-        arr[idx + 2] = op + offset;
-        haloArr[idx + 2] = op + offset;
-      }
-    }
-    posAttr.needsUpdate = true;
-    haloPosAttr.needsUpdate = true;
-  }
-
-  function igniteLife(life, now) {
-    life.ignite(now);
-  }
-
-  // Pre-pick a "hero" life — the one that the ignite section focuses on
-  // and the one that the donor's name travels along.
-  // Choose a life near the origin for a clear focal point.
+  // The hero life — the one the story and the first donation focus on
   const heroLife = lives.reduce((best, life) => {
     const d = life.forkPos.length();
     return d < best.forkPos.length() ? life : best;
@@ -482,7 +403,6 @@ export function buildGalaxy({ numLives = 220, galaxyRadius = 16, seed = 20260717
     updateDrift,
     setReveal,
     seedLit,
-    /** Total branches ignited in this session. */
     ignitedCount: () => lives.filter((l) => l.ignited).length,
   };
 }
