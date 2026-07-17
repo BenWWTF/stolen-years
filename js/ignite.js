@@ -193,8 +193,8 @@ export function setupIgnite({ galaxy, scene, onIgnite }) {
 }
 
 function pickTarget(galaxy) {
-  const ignited = galaxy.lives.filter((l) => l.ignited).length;
-  if (ignited === 0) return galaxy.heroLife;
+  // The hero life first (pre-lit seeds are scenery, they don't count)
+  if (!galaxy.heroLife.ignited) return galaxy.heroLife;
   const next = galaxy.lives.find((l) => !l.ignited);
   return next || galaxy.heroLife;
 }

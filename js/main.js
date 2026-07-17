@@ -84,7 +84,9 @@ const galaxy = buildGalaxy({
   numLives: isMobile ? 140 : 260,
   galaxyRadius: isMobile ? 15 : 18,
   seed: 20260717,
+  lineWidth: isMobile ? 1.7 : 2.2,
 });
+galaxy.material.resolution.set(window.innerWidth, window.innerHeight);
 scene.add(galaxy.object);
 
 // ============================================================
@@ -152,6 +154,7 @@ function onResize() {
   composer.setSize(w, h);
   bloom.setSize(w, h);
   css2dRenderer.setSize(w, h);
+  galaxy.material.resolution.set(w, h);
 }
 window.addEventListener("resize", onResize);
 
@@ -190,7 +193,7 @@ function frame() {
   // Ease bloom off for the wide shot so the core doesn't wash out
   bloom.strength = BLOOM_BASE - 0.4 * smoothstep(0.8, 1, scrollProgress);
 
-  galaxy.updateColors(t);
+  galaxy.updateColors(t, !reducedMotion);
   if (!reducedMotion) galaxy.updateDrift(t);
 
   igniteCtl.update(t);

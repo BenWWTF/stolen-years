@@ -39,6 +39,8 @@ export function setupShare() {
 
   return function renderShare(life, donation) {
     lastDonation = donation;
+    document.getElementById("shareStage").classList.remove("is-empty");
+    document.getElementById("shareEmpty").hidden = true;
     const who = donation.anonymous ? "An unnamed light" : donation.name;
     const detail =
       donation.kind === "action"

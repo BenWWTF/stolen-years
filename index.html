@@ -146,21 +146,18 @@
           <h2 class="h2 h2--center">A new timeline begins.</h2>
           <p class="line line--center">Ten seconds of it, made to travel.</p>
 
-          <div class="share-stage" id="shareStage" aria-live="polite">
+          <p class="share-empty" id="shareEmpty">Yours appears here after you ignite.</p>
+
+          <div class="share-stage is-empty" id="shareStage" aria-live="polite">
             <div class="phone">
               <div class="phone__notch"></div>
-              <div class="phone__screen" id="phoneScreen">
-                <div class="phone__placeholder">
-                  <span class="placeholder-line"></span>
-                  <p>Your clip renders here after you ignite.</p>
-                </div>
-              </div>
+              <div class="phone__screen" id="phoneScreen"></div>
               <div class="phone__caption" id="phoneCaption">@weandmecfs</div>
             </div>
             <div class="share-actions">
               <button class="cta cta--ghost" id="downloadClip" type="button" disabled>Download clip</button>
               <button class="cta cta--ghost" id="copyLink" type="button" disabled>Copy share link</button>
-              <p class="share-meta" id="shareMeta">Waiting for your light.</p>
+              <p class="share-meta" id="shareMeta"></p>
             </div>
           </div>
         </div>

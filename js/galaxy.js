@@ -4,17 +4,23 @@
  * Visual grammar (matches the Branching concept diagram):
  *   time flows left to right (+x)
  *   lived line    — a comet trail: dark in the far past, brightening
- *                   white toward the fork (the present)
+ *                   white toward the fork (the present), with a pulse
+ *                   of light traveling along the hero's line
  *   stolen branch — empathy beige, droops downward and fades to black
  *                   at its tip (dims and drifts)
  *   future fan    — three dormant blue strands rising ahead of the
  *                   fork; a donation ignites the middle one
  *
- * All lives are packed into a single LineSegments geometry (one draw
- * call). With additive blending, color * 0 = invisible, which drives
- * both the per-vertex gradients and the staged scroll reveal.
+ * Rendered as fat lines (Line2 / LineSegmentsGeometry) so the strokes
+ * have true pixel thickness on every platform. All lives live in one
+ * instanced geometry (one draw call). With additive blending,
+ * color * 0 = invisible, which drives the per-vertex gradients and the
+ * staged scroll reveal.
  */
 import * as THREE from "three";
+import { LineSegments2 } from "three/addons/lines/LineSegments2.js";
+import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry.js";
+import { LineMaterial } from "three/addons/lines/LineMaterial.js";
 import { range } from "./util.js";
 
 const COL_LIVED = new THREE.Color(0xffffff);
@@ -115,7 +121,12 @@ class Life {
   }
 }
 
-export function buildGalaxy({ numLives = 220, galaxyRadius = 16, seed = 20260717 } = {}) {
+export function buildGalaxy({
+  numLives = 220,
+  galaxyRadius = 16,
+  seed = 20260717,
+  lineWidth = 2.2,
+} = {}) {
   // Seeded RNG so the scene is reproducible
   let s = seed >>> 0;
   const rng = () => {
@@ -136,17 +147,14 @@ export function buildGalaxy({ numLives = 220, galaxyRadius = 16, seed = 20260717
   const vertsPerLife = vertsPerBranch * BRANCHES_PER_LIFE;
   const totalVerts = vertsPerLife * numLives;
 
+  // Layout: 2 vertices per segment, 3 floats per vertex — exactly what
+  // LineSegmentsGeometry.setPositions / setColors expect.
   const positions = new Float32Array(totalVerts * 3);
   const colorDim = new Float32Array(totalVerts * 3);
   const colorLit = new Float32Array(totalVerts * 3);
-  const colors = new Float32Array(totalVerts * 3);
 
   let cursor = 0;
 
-  /**
-   * Emit one branch. dimFn/litFn map t (0..1 along the branch) to a
-   * THREE.Color-like {r,g,b} multiplied brightness.
-   */
   function emitBranch(path, dimFn, litFn) {
     for (let i = 0; i < segsPerBranch; i++) {
       const a = path[i];
@@ -217,37 +225,30 @@ export function buildGalaxy({ numLives = 220, galaxyRadius = 16, seed = 20260717
     life.vertexCount = cursor - life.vertexStart;
   }
 
-  colors.set(colorDim);
+  const geometry = new LineSegmentsGeometry();
+  geometry.setPositions(positions);
+  geometry.setColors(colorDim);
 
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-  geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-  geometry.computeBoundingSphere();
-
-  const material = new THREE.LineBasicMaterial({
+  const material = new LineMaterial({
     vertexColors: true,
+    linewidth: lineWidth, // pixels
     transparent: true,
     opacity: 0.95,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
+    fog: true,
   });
 
-  const lines = new THREE.LineSegments(geometry, material);
+  const lines = new LineSegments2(geometry, material);
   lines.frustumCulled = false;
 
-  // Glow halo — the same geometry at a slight scale, low opacity
-  const haloGeom = geometry.clone();
-  const haloMat = new THREE.LineBasicMaterial({
-    vertexColors: true,
-    transparent: true,
-    opacity: 0.18,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-  });
-  const halo = new THREE.LineSegments(haloGeom, haloMat);
-  halo.scale.set(1.02, 1.02, 1.02);
-  halo.frustumCulled = false;
-  lines.add(halo);
+  // Interleaved buffers backing the fat-line instances. Their arrays use
+  // the same layout as `positions` / `colorDim` (6 floats per segment).
+  const posBuffer = geometry.attributes.instanceStart.data;
+  const colorBuffer = geometry.attributes.instanceColorStart.data;
+  posBuffer.setUsage(THREE.DynamicDrawUsage);
+  colorBuffer.setUsage(THREE.DynamicDrawUsage);
+  const origPositions = new Float32Array(positions);
 
   // Drift data — slow per-life breathing so the field never freezes
   const driftData = lives.map(() => ({
@@ -259,14 +260,9 @@ export function buildGalaxy({ numLives = 220, galaxyRadius = 16, seed = 20260717
   // ----------------------------------------------------------------
   // Color state + staged reveal
   // ----------------------------------------------------------------
-  const colorAttr = geometry.getAttribute("color");
-  const haloColorAttr = haloGeom.getAttribute("color");
-  const posAttr = geometry.getAttribute("position");
-  const haloPosAttr = haloGeom.getAttribute("position");
-  const origPositions = new Float32Array(positions);
-
+  // Base color state (what colors would be at full reveal). Ignite
+  // animations blend into these; the output buffer is base * reveal.
   const baseColors = new Float32Array(colorDim);
-  const haloBaseColors = new Float32Array(colorDim);
 
   let revealOthers = 0;
   let revealHeroBranches = 0;
@@ -278,20 +274,23 @@ export function buildGalaxy({ numLives = 220, galaxyRadius = 16, seed = 20260717
     revealHeroBranches = heroBranches;
   }
 
-  function applyBranchFactor(out, haloOut, from, to, f) {
-    const fh = f * f; // halo fades faster, keeps the wide shot from washing out
+  function applyBranchFactor(out, from, to, f) {
     for (let i = from; i < to; i++) {
       const i3 = i * 3;
       out[i3 + 0] = baseColors[i3 + 0] * f;
       out[i3 + 1] = baseColors[i3 + 1] * f;
       out[i3 + 2] = baseColors[i3 + 2] * f;
-      haloOut[i3 + 0] = haloBaseColors[i3 + 0] * fh;
-      haloOut[i3 + 1] = haloBaseColors[i3 + 1] * fh;
-      haloOut[i3 + 2] = haloBaseColors[i3 + 2] * fh;
     }
   }
 
-  function updateColors(now) {
+  /**
+   * Per frame: blend running ignite animations into the base colors,
+   * rewrite output = base * reveal when anything changed, then ride a
+   * pulse of light along the hero's lived line ("a life in motion").
+   */
+  function updateColors(now, pulse = true) {
+    const out = colorBuffer.array;
+
     let igniteDirty = false;
     for (const life of lives) {
       if (!life.ignited || life.igniteSettled) continue;
@@ -309,9 +308,6 @@ export function buildGalaxy({ numLives = 220, galaxyRadius = 16, seed = 20260717
         baseColors[i3 + 0] = d0 + (colorLit[i3 + 0] - d0) * eased;
         baseColors[i3 + 1] = d1 + (colorLit[i3 + 1] - d1) * eased;
         baseColors[i3 + 2] = d2 + (colorLit[i3 + 2] - d2) * eased;
-        haloBaseColors[i3 + 0] = colorLit[i3 + 0] * 1.4 * eased;
-        haloBaseColors[i3 + 1] = colorLit[i3 + 1] * 1.4 * eased;
-        haloBaseColors[i3 + 2] = colorLit[i3 + 2] * 1.4 * eased;
       }
       if (t >= 1) life.igniteSettled = true;
     }
@@ -319,29 +315,45 @@ export function buildGalaxy({ numLives = 220, galaxyRadius = 16, seed = 20260717
     const revealDirty =
       Math.abs(revealOthers - appliedOthers) > 0.002 ||
       Math.abs(revealHeroBranches - appliedHero) > 0.002;
-    if (!igniteDirty && !revealDirty) return;
-    appliedOthers = revealOthers;
-    appliedHero = revealHeroBranches;
 
-    const out = colorAttr.array;
-    const haloOut = haloColorAttr.array;
-    for (const life of lives) {
-      const v0 = life.vertexStart;
-      if (life === heroLife) {
-        // Lived line always visible; the fork's branches appear on cue
-        applyBranchFactor(out, haloOut, v0, v0 + vertsPerBranch, 1);
-        applyBranchFactor(out, haloOut, v0 + vertsPerBranch, v0 + life.vertexCount, revealHeroBranches);
-      } else {
-        applyBranchFactor(out, haloOut, v0, v0 + life.vertexCount, revealOthers);
+    if (igniteDirty || revealDirty) {
+      appliedOthers = revealOthers;
+      appliedHero = revealHeroBranches;
+      for (const life of lives) {
+        const v0 = life.vertexStart;
+        if (life === heroLife) {
+          // Lived line always visible; the fork's branches appear on cue
+          applyBranchFactor(out, v0, v0 + vertsPerBranch, 1);
+          applyBranchFactor(out, v0 + vertsPerBranch, v0 + life.vertexCount, revealHeroBranches);
+        } else {
+          applyBranchFactor(out, v0, v0 + life.vertexCount, revealOthers);
+        }
       }
     }
-    colorAttr.needsUpdate = true;
-    haloColorAttr.needsUpdate = true;
+
+    // The hero's lived line carries a traveling pulse of light so the
+    // opening beats visibly move. Skipped under prefers-reduced-motion.
+    if (pulse) {
+      const from = heroLife.vertexStart;
+      const head = ((now * 0.22) % 1.5) - 0.15; // loops with a pause off the end
+      for (let i = from; i < from + vertsPerBranch; i++) {
+        const k = i - from;
+        const t = (Math.floor(k / 2) + (k % 2)) / segsPerBranch;
+        const d = t - head;
+        const glow = Math.exp(-(d * d) / (2 * 0.06 * 0.06));
+        const m = 1 + 1.6 * glow;
+        const i3 = i * 3;
+        out[i3 + 0] = baseColors[i3 + 0] * m;
+        out[i3 + 1] = baseColors[i3 + 1] * m;
+        out[i3 + 2] = baseColors[i3 + 2] * m;
+      }
+    }
+
+    colorBuffer.needsUpdate = true;
   }
 
   function updateDrift(t) {
-    const arr = posAttr.array;
-    const haloArr = haloPosAttr.array;
+    const arr = posBuffer.array;
     for (let li = 0; li < lives.length; li++) {
       const life = lives[li];
       const d = driftData[li];
@@ -350,11 +362,9 @@ export function buildGalaxy({ numLives = 220, galaxyRadius = 16, seed = 20260717
       for (let i = 0; i < life.vertexCount; i++) {
         const idx = vStart + i * 3;
         arr[idx + 2] = origPositions[idx + 2] + offset;
-        haloArr[idx + 2] = origPositions[idx + 2] + offset;
       }
     }
-    posAttr.needsUpdate = true;
-    haloPosAttr.needsUpdate = true;
+    posBuffer.needsUpdate = true;
   }
 
   function igniteLife(life, now) {
@@ -363,6 +373,7 @@ export function buildGalaxy({ numLives = 220, galaxyRadius = 16, seed = 20260717
 
   /**
    * Pre-ignite a few settled lives so the topology beat has company.
+   * These are scenery: they don't count toward the session counter.
    */
   function seedLit(count) {
     let picked = 0;
@@ -372,6 +383,7 @@ export function buildGalaxy({ numLives = 220, galaxyRadius = 16, seed = 20260717
       if (life.forkPos.distanceTo(heroLife.forkPos) < 4) continue;
       life.ignite(-100);
       life.igniteSettled = true;
+      life.seeded = true;
       const start = life.futureStart;
       const end = start + vertsPerBranch;
       for (let i = start; i < end; i++) {
@@ -379,9 +391,6 @@ export function buildGalaxy({ numLives = 220, galaxyRadius = 16, seed = 20260717
         baseColors[i3 + 0] = colorLit[i3 + 0];
         baseColors[i3 + 1] = colorLit[i3 + 1];
         baseColors[i3 + 2] = colorLit[i3 + 2];
-        haloBaseColors[i3 + 0] = colorLit[i3 + 0] * 1.4;
-        haloBaseColors[i3 + 1] = colorLit[i3 + 1] * 1.4;
-        haloBaseColors[i3 + 2] = colorLit[i3 + 2] * 1.4;
       }
       picked++;
     }
@@ -396,6 +405,7 @@ export function buildGalaxy({ numLives = 220, galaxyRadius = 16, seed = 20260717
 
   return {
     object: lines,
+    material,
     lives,
     heroLife,
     igniteLife,
@@ -403,6 +413,6 @@ export function buildGalaxy({ numLives = 220, galaxyRadius = 16, seed = 20260717
     updateDrift,
     setReveal,
     seedLit,
-    ignitedCount: () => lives.filter((l) => l.ignited).length,
+    ignitedCount: () => lives.filter((l) => l.ignited && !l.seeded).length,
   };
 }
