@@ -99,7 +99,8 @@ galaxy.seedLit(2); // scenery, excluded from every counter
 // Camera controller
 // ============================================================
 const camCtl = makeCameraController(camera);
-camCtl.aimStory(galaxy.heroLife);
+const portraitLift = () => (window.innerHeight > window.innerWidth ? 2.4 : 0);
+camCtl.aimStory(galaxy.heroLife, portraitLift());
 camCtl.focusOn(galaxy.heroLife.forkPos);
 
 // ============================================================
@@ -206,6 +207,7 @@ function onResize() {
   bloom.setSize(w, h);
   css2dRenderer.setSize(w, h);
   galaxy.material.resolution.set(w, h);
+  camCtl.aimStory(galaxy.heroLife, portraitLift()); // rotation flips the framing
 }
 window.addEventListener("resize", onResize);
 

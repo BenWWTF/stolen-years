@@ -92,23 +92,32 @@ export function makeCameraController(camera) {
    * Aim the opening beats at the hero life so the single line is
    * actually in frame: hero (line right of the text), life (tracking),
    * fork (head-on), past (down toward the stolen branch).
+   *
+   * `lift` shifts the camera down so the subject rides the upper part
+   * of the frame — used in portrait, where the narrow horizontal FOV
+   * would otherwise drop the line straight through the text.
    */
-  function aimStory(hero) {
+  function aimStory(hero, lift = 0) {
     const fork = hero.forkPos;
     const mid = hero.livedPath[Math.floor(hero.livedPath.length / 2)];
 
-    KEYFRAMES[0].pos = [fork.x - 1.0, fork.y + 0.6, fork.z + 7.0];
-    KEYFRAMES[0].look = [fork.x - 2.9, fork.y + 0.55, fork.z];
+    KEYFRAMES[0].pos = [fork.x - 1.0, fork.y + 0.6 - lift, fork.z + 7.0];
+    KEYFRAMES[0].look = [fork.x - 2.9, fork.y + 0.55 - lift, fork.z];
 
-    KEYFRAMES[1].pos = [mid.x + 2.2, mid.y + 0.4, mid.z + 5.2];
-    KEYFRAMES[1].look = [mid.x + 1.0, mid.y, mid.z];
+    // Closer beats get proportionally less lift or the subject
+    // leaves the frame entirely
+    const l1 = lift * 0.5;
+    KEYFRAMES[1].pos = [mid.x + 2.2, mid.y + 0.4 - l1, mid.z + 5.2];
+    KEYFRAMES[1].look = [mid.x + 1.0, mid.y - l1, mid.z];
 
-    KEYFRAMES[2].pos = [fork.x + 0.4, fork.y + 0.2, fork.z + 4.6];
-    KEYFRAMES[2].look = [fork.x + 0.9, fork.y, fork.z];
+    const l2 = lift * 0.3;
+    KEYFRAMES[2].pos = [fork.x + 0.4, fork.y + 0.2 - l2, fork.z + 4.6];
+    KEYFRAMES[2].look = [fork.x + 0.9, fork.y - l2, fork.z];
 
+    const l3 = lift * 0.25;
     const stolenMid = hero.stolenPath[13];
-    KEYFRAMES[3].pos = [stolenMid.x + 0.3, stolenMid.y + 0.4, stolenMid.z + 5.6];
-    KEYFRAMES[3].look = [stolenMid.x + 1.0, stolenMid.y - 0.35, stolenMid.z];
+    KEYFRAMES[3].pos = [stolenMid.x + 0.3, stolenMid.y + 0.4 - l3, stolenMid.z + 5.6];
+    KEYFRAMES[3].look = [stolenMid.x + 1.0, stolenMid.y - 0.35 - l3, stolenMid.z];
   }
 
   return { update, focusOn, aimStory };
