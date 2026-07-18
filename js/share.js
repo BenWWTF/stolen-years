@@ -93,16 +93,14 @@ export function setupShare() {
 
     downloadBtn.disabled = pendingClip;
     copyLinkBtn.disabled = false;
-    shareMeta.textContent = pendingClip
-      ? "Rendering your ten-second clip…"
-      : "Your clip is ready to download.";
+    shareMeta.textContent = pendingClip ? "Rendering your ten-second clip…" : "";
   }
 
   function setClip(result) {
     if (!result) {
       // Recording failed — fall back to the SVG still
       downloadBtn.disabled = false;
-      shareMeta.textContent = "Your clip is ready to download.";
+      shareMeta.textContent = "";
       return;
     }
     clip = result;
@@ -112,7 +110,7 @@ export function setupShare() {
       shareClipBtn.hidden = false;
       shareClipBtn.disabled = false;
     }
-    shareMeta.textContent = "Your clip is ready.";
+    shareMeta.textContent = "";
   }
 
   function setShareUrl(url) {
