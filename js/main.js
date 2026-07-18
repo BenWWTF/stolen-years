@@ -18,7 +18,7 @@ import * as THREE from "three";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
-import { CSS2DRenderer } from "three/addons/renderers/CSS2DRenderer.js";
+import { CSS2DRenderer, CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 
 import { buildGalaxy } from "./galaxy.js";
@@ -210,6 +210,47 @@ if (!isMobile && !reducedMotion) {
   });
 }
 
+// ============================================================
+// The fork gate — the timeline doesn't break until you touch it.
+// Destruction is a tap: instant, casual, almost accidental.
+// Scrolling past the beat breaks it anyway (the story never stalls),
+// and reduced-motion keeps the old scroll-driven reveal.
+// ============================================================
+const FORK_GATE = { min: 0.04, max: 0.19 };
+let forkBrokenAt = -1; // clock time of the break; < 0 = still intact
+const forkPayoff = document.getElementById("forkPayoff");
+if (reducedMotion) forkPayoff.classList.add("is-shown");
+
+const promptEl = document.createElement("div");
+promptEl.className = "fork-prompt";
+promptEl.innerHTML =
+  '<span class="fork-prompt__ring"></span><span class="fork-prompt__text">Touch the line</span>';
+const forkPrompt = new CSS2DObject(promptEl);
+forkPrompt.visible = false;
+galaxy.object.add(forkPrompt); // inherits the field's scroll rotation
+
+// Ahead of the line's tip, in the empty space where the break will
+// happen — clear of the beat text in both orientations
+function placeForkPrompt() {
+  const p = galaxy.heroLife.forkPos;
+  if (isPortrait()) forkPrompt.position.set(p.x + 0.55, p.y + 0.4, p.z);
+  else forkPrompt.position.set(p.x + 1.5, p.y + 0.35, p.z);
+}
+placeForkPrompt();
+
+function breakFork() {
+  if (forkBrokenAt >= 0) return;
+  forkBrokenAt = clock.getElapsedTime();
+  forkPayoff.classList.add("is-shown");
+}
+
+window.addEventListener("pointerdown", (e) => {
+  if (forkBrokenAt >= 0 || reducedMotion) return;
+  if (scrollProgress < FORK_GATE.min || scrollProgress > FORK_GATE.max) return;
+  if (e.target.closest("a, button, input, label")) return;
+  breakFork();
+});
+
 function targetProgress() {
   const max = document.documentElement.scrollHeight - window.innerHeight;
   return max > 0 ? window.scrollY / max : 0;
@@ -229,6 +270,7 @@ function onResize() {
   css2dRenderer.setSize(w, h);
   galaxy.material.resolution.set(w, h);
   aimForViewport(); // rotation flips the framing
+  placeForkPrompt();
 }
 window.addEventListener("resize", onResize);
 
@@ -255,11 +297,21 @@ function frame() {
 
   // The screenplay reveal:
   //   beat  0    · only the hero's lived line
-  //   beat  1    · the fork: the hero's stolen + future branches appear
+  //   beat  1    · the fork: intact until the visitor touches it
   //   beat  4    · the stream: timelines surge to fill the frame,
   //                then settle back for the manifesto + form
   //   beat  8    · the full topology
-  const heroBranches = smoothstep(0.06, 0.14, scrollProgress);
+  if (forkBrokenAt < 0 && !reducedMotion && scrollProgress > FORK_GATE.max) breakFork();
+  forkPrompt.visible =
+    !reducedMotion &&
+    forkBrokenAt < 0 &&
+    scrollProgress >= FORK_GATE.min &&
+    scrollProgress <= FORK_GATE.max;
+  const heroBranches = reducedMotion
+    ? smoothstep(0.06, 0.14, scrollProgress)
+    : forkBrokenAt < 0
+      ? 0
+      : smoothstep(0, 1.6, t - forkBrokenAt);
   const streamSurge = smoothstep(0.4, 0.5, scrollProgress) - 0.5 * smoothstep(0.56, 0.66, scrollProgress);
   const others =
     0.36 * streamSurge +
@@ -268,6 +320,11 @@ function frame() {
 
   // Milestone: the structure bends and brightens for a breath
   let bloomBoost = 0;
+  // The break itself flashes — one bright surge as the timeline snaps
+  if (forkBrokenAt >= 0) {
+    const k = (t - forkBrokenAt) / 0.9;
+    if (k < 1) bloomBoost += 0.45 * Math.sin(Math.PI * k);
+  }
   if (milestoneAt >= 0) {
     const k = (t - milestoneAt) / 1.8;
     if (k >= 1) {

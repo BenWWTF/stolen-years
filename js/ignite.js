@@ -162,8 +162,8 @@ export function setupIgnite({ galaxy, scene, onIgnite, onIgniteStart }) {
     haloMat.opacity = 0.32 * fadeIn;
   }
 
-  form.addEventListener("submit", (e) => {
-    e.preventDefault();
+  /** Validate + read the form. Flashes the offending field on failure. */
+  function readForm() {
     const name = (nameInput.value || "").trim();
     const amount = parseInt(amountInput.value, 10) || selectedAmount || 0;
     const dedicate = (dedicateInput.value || "").trim();
@@ -171,23 +171,81 @@ export function setupIgnite({ galaxy, scene, onIgnite, onIgniteStart }) {
 
     if (!name) {
       flash(nameInput);
-      return;
+      return null;
     }
     if (!selectedAction && (!amount || amount < 1)) {
       flash(amountInput);
-      return;
+      return null;
     }
 
-    const donation = selectedAction
+    return selectedAction
       ? { kind: "action", name, action: selectedAction, dedicate, anonymous, at: Date.now() }
       : { kind: "gift", name, amount, dedicate, anonymous, at: Date.now() };
+  }
 
+  function trySubmit() {
+    const donation = readForm();
+    if (!donation) return;
     const target = pickTarget(galaxy);
-
-    const igniteEl = document.getElementById("ignite");
-    igniteEl.scrollIntoView({ behavior: "smooth", block: "center" });
-
+    document.getElementById("ignite").scrollIntoView({ behavior: "smooth", block: "center" });
     ignite(target, donation, _now());
+  }
+
+  // Enter in a field still submits instantly — the accessible path
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    trySubmit();
+  });
+
+  // ------------------------------------------------------------
+  // Hold-to-light. Breaking a timeline was a tap; lighting one
+  // takes two seconds of not letting go. Release early and the
+  // charge drains back.
+  // ------------------------------------------------------------
+  const submitBtn = document.getElementById("igniteSubmit");
+  const holdHint = document.getElementById("holdHint");
+  const HOLD_MS = 2000; // must match the .is-charging transition
+  const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let holdTimer = null;
+
+  submitBtn.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    if (prefersReduced) {
+      trySubmit();
+      return;
+    }
+    if (!readForm()) return; // invalid — flash now, don't charge
+    try {
+      submitBtn.setPointerCapture(e.pointerId);
+    } catch {
+      /* synthetic or already-released pointer */
+    }
+    submitBtn.classList.add("is-charging");
+    holdTimer = setTimeout(() => {
+      holdTimer = null;
+      submitBtn.classList.remove("is-charging");
+      submitBtn.classList.add("is-lit");
+      setTimeout(() => submitBtn.classList.remove("is-lit"), 700);
+      trySubmit();
+    }, HOLD_MS);
+  });
+
+  function cancelHold() {
+    if (!holdTimer) return;
+    clearTimeout(holdTimer);
+    holdTimer = null;
+    submitBtn.classList.remove("is-charging");
+    holdHint.hidden = false; // teach the gesture after a too-short press
+  }
+  submitBtn.addEventListener("pointerup", cancelHold);
+  submitBtn.addEventListener("pointercancel", cancelHold);
+
+  // Keyboard users light instantly — a hold gesture has no keyboard analog
+  submitBtn.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      trySubmit();
+    }
   });
 
   return { ignite, update, setNow: (fn) => (_now = fn) };

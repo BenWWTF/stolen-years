@@ -63,8 +63,8 @@
       <section class="section beat beat--left" data-scene="fork">
         <div class="beat__inner">
           <h2 class="h2">Then, everything<br />changes.</h2>
-          <p class="line">
-            An infection. A toxin. An injury.<br />
+          <p class="line">An infection. A toxin. An injury.</p>
+          <p class="line line--payoff" id="forkPayoff">
             One branch keeps going. The other is <em class="stolen">stolen</em>.
           </p>
         </div>
@@ -156,7 +156,11 @@
               <span>Make my light anonymous</span>
             </label>
 
-            <button type="submit" class="cta cta--primary">Light a branch</button>
+            <button type="button" class="cta cta--primary cta--hold" id="igniteSubmit">
+              <span class="cta__fill" aria-hidden="true"></span>
+              <span class="cta__label">Light a branch</span>
+            </button>
+            <p class="hold-hint" id="holdHint" hidden>Press and hold until it ignites</p>
             <p class="fineprint">100% of your donation goes directly to ME/CFS research.</p>
           </form>
         </div>
