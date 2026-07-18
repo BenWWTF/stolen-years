@@ -126,6 +126,9 @@ export function buildGalaxy({
   galaxyRadius = 16,
   seed = 20260717,
   lineWidth = 2.2,
+  pulseSpeed = 0.22,   // how fast the light rides the hero line
+  pulseStrength = 1.6, // how bright the pulse burns
+  driftScale = 1,      // multiplies the field's breathing amp + speed
 } = {}) {
   // Seeded RNG so the scene is reproducible
   let s = seed >>> 0;
@@ -253,8 +256,8 @@ export function buildGalaxy({
   // Drift data — slow per-life breathing so the field never freezes
   const driftData = lives.map(() => ({
     seed: rng() * 1000,
-    speed: 0.05 + rng() * 0.1,
-    amp: 0.04 + rng() * 0.07,
+    speed: (0.05 + rng() * 0.1) * driftScale,
+    amp: (0.04 + rng() * 0.07) * driftScale,
   }));
 
   // ----------------------------------------------------------------
@@ -342,8 +345,8 @@ export function buildGalaxy({
     if (pulse) {
       const litFuture = heroLife.ignited && heroLife.igniteSettled;
       const span = litFuture ? 2 : 1; // lived (0..1) + ignited future (1..2)
-      const head = ((now * 0.22) % (span + 0.5)) - 0.15;
-      const strength = 1.6 + 1.2 * revealOthers; // stronger in wide shots
+      const head = ((now * pulseSpeed) % (span + 0.5)) - 0.15;
+      const strength = pulseStrength + 1.2 * revealOthers; // stronger in wide shots
       const writePulse = (from, tOffset) => {
         for (let i = from; i < from + vertsPerBranch; i++) {
           const k = i - from;

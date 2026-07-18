@@ -63,10 +63,10 @@ export function makeClipRecorder(sourceCanvas) {
     let y = H - 320;
     ctx.fillStyle = "#f4f2ed";
     ctx.font = "500 64px 'Inter Tight', 'Inter', sans-serif";
-    ctx.fillText("I ignited a", 48, y);
+    ctx.fillText("I lit a", 48, y);
     ctx.fillStyle = accent;
     ctx.font = "italic 500 64px 'Inter Tight', 'Inter', sans-serif";
-    ctx.fillText("future.", 48 + ctx.measureText("I ignited a ").width - 14, y);
+    ctx.fillText("branch.", 48 + ctx.measureText("I lit a ").width - 14, y);
 
     y += 92;
     ctx.fillStyle = accent;
@@ -82,7 +82,7 @@ export function makeClipRecorder(sourceCanvas) {
 
     ctx.fillStyle = "#f4f2ed";
     ctx.font = "600 22px 'Inter', sans-serif";
-    ctx.fillText("IGNITE YOURS · WEANDMECFS.ORG", 48, H - 96);
+    ctx.fillText("LIGHT YOURS · WEANDMECFS.ORG", 48, H - 96);
     ctx.globalAlpha = 1;
   }
 

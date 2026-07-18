@@ -94,6 +94,11 @@ const galaxy = buildGalaxy({
   galaxyRadius: isMobile ? 15 : 18,
   seed: 20260717,
   lineWidth: isMobile ? 1.7 : 2.2,
+  // The small frame needs more life: faster, brighter pulse and a
+  // visibly breathing field
+  pulseSpeed: isMobile ? 0.32 : 0.22,
+  pulseStrength: isMobile ? 2.4 : 1.6,
+  driftScale: isMobile ? 1.8 : 1,
 });
 galaxy.material.resolution.set(window.innerWidth, window.innerHeight);
 scene.add(galaxy.object);
@@ -195,6 +200,16 @@ live.load().then(async () => {
 const topbar = document.querySelector(".topbar");
 let scrollProgress = 0;
 
+// Pointer parallax — the whole scene leans gently toward the cursor
+// (desktop only; the camera controller lerps, so this stays smooth)
+const parallax = { x: 0, y: 0 };
+if (!isMobile && !reducedMotion) {
+  window.addEventListener("pointermove", (e) => {
+    parallax.x = (e.clientX / window.innerWidth - 0.5) * 2;
+    parallax.y = (e.clientY / window.innerHeight - 0.5) * 2;
+  });
+}
+
 function targetProgress() {
   const max = document.documentElement.scrollHeight - window.innerHeight;
   return max > 0 ? window.scrollY / max : 0;
@@ -236,17 +251,19 @@ function frame() {
     topbar.classList.toggle("is-stuck", stuck);
   }
 
-  camCtl.update(scrollProgress);
+  camCtl.update(scrollProgress, parallax);
 
   // The screenplay reveal:
   //   beat  0    · only the hero's lived line
   //   beat  1    · the fork: the hero's stolen + future branches appear
-  //   beat  4    · faint neighbors join — the future is branching
+  //   beat  4    · the stream: timelines surge to fill the frame,
+  //                then settle back for the manifesto + form
   //   beat  8    · the full topology
   const heroBranches = smoothstep(0.06, 0.14, scrollProgress);
+  const streamSurge = smoothstep(0.4, 0.5, scrollProgress) - 0.5 * smoothstep(0.56, 0.66, scrollProgress);
   const others =
-    0.22 * smoothstep(0.4, 0.52, scrollProgress) +
-    0.58 * smoothstep(0.84, 0.98, scrollProgress);
+    0.36 * streamSurge +
+    0.62 * smoothstep(0.84, 0.98, scrollProgress);
   galaxy.setReveal(others, heroBranches);
 
   // Milestone: the structure bends and brightens for a breath
@@ -262,8 +279,14 @@ function frame() {
       bloomBoost = 0.5 * w;
     }
   }
-  // Ease bloom off for the wide shot so the core doesn't wash out
-  bloom.strength = BLOOM_BASE - 0.4 * smoothstep(0.84, 1, scrollProgress) + bloomBoost;
+  // Ease bloom off when the field is dense — inside the beat-4 stream
+  // and in the finale — so individual lines stay distinct instead of
+  // washing out to fog
+  bloom.strength =
+    BLOOM_BASE -
+    0.3 * (streamSurge > 0.5 ? 2 * (streamSurge - 0.5) : 0) -
+    0.4 * smoothstep(0.84, 1, scrollProgress) +
+    bloomBoost;
 
   galaxy.updateColors(t, !reducedMotion);
   if (!reducedMotion) galaxy.updateDrift(t);

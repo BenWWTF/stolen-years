@@ -5,7 +5,7 @@
  *   1  fork      · head-on close, the split is the subject
  *   2  stolen    · low angle, the stolen branch drifting down
  *   3  past      · pulled back, the stolen branch out of reach
- *   4  branching · lifted wide, futures fanning out
+ *   4  branching · inside the stream, timelines filling the frame
  *   5  ideas     · calm mid-shot (the manifesto)
  *   6  ignite    · close on the hero life
  *   7  future    · following the freshly ignited branch
@@ -20,7 +20,7 @@ const KEYFRAMES = [
   { t: 0.125, pos: [0.0, 0.2, 4.6],   look: [0, 0, 0], roll: 0,     fov: 46 },
   { t: 0.25,  pos: [-2.4, -1.3, 7.5], look: [0, -0.4, 0], roll: -0.04, fov: 50 },
   { t: 0.375, pos: [-1.8, -0.6, 9.5], look: [0, -0.6, 0], roll: -0.02, fov: 50 },
-  { t: 0.5,   pos: [0.0, 3.0, 22.0],  look: [0, 1.6, 0], roll: 0,   fov: 52 },
+  { t: 0.5,   pos: [0.0, 1.7, 13.5],  look: [0, 1.0, -2], roll: 0,  fov: 58 },
   { t: 0.625, pos: [0.0, 2.2, 16.0],  look: [0, 1.2, 0], roll: 0,   fov: 50 },
   { t: 0.75,  pos: [3.0, 0.5, 5.0],   look: [0, 0, 0], roll: 0.02,  fov: 42 },
   { t: 0.875, pos: [0.5, 0.8, 5.5],   look: [0, 0, 0], roll: 0,     fov: 44 },
@@ -59,13 +59,19 @@ export function makeCameraController(camera) {
   const targetLook = new THREE.Vector3();
   const currentLook = new THREE.Vector3();
 
-  function update(progress) {
+  function update(progress, parallax = null) {
     const [a, b] = findKeyframes(progress);
     const segT = b.t === a.t ? 0 : (progress - a.t) / (b.t - a.t);
     const k = lerpKeyframe(a, b, segT);
 
     targetPos.set(k.pos[0], k.pos[1], k.pos[2]);
     targetLook.set(k.look[0], k.look[1], k.look[2]);
+
+    if (parallax) {
+      targetPos.x += parallax.x * 0.35;
+      targetPos.y -= parallax.y * 0.22;
+      targetLook.x += parallax.x * 0.12;
+    }
 
     camera.position.lerp(targetPos, 0.12);
     currentLook.lerp(targetLook, 0.12);

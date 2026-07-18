@@ -7,6 +7,7 @@
 export function setupShare() {
   const phoneScreen = document.getElementById("phoneScreen");
   const phoneCaption = document.getElementById("phoneCaption");
+  const shareClipBtn = document.getElementById("shareClip");
   const downloadBtn = document.getElementById("downloadClip");
   const copyLinkBtn = document.getElementById("copyLink");
   const shareMeta = document.getElementById("shareMeta");
@@ -14,6 +15,23 @@ export function setupShare() {
   let lastDonation = null;
   let clip = null; // {blob, url, ext} once the recording is ready
   let shareUrl = null;
+
+  function clipFile() {
+    return new File([clip.blob], `stolen-years-${slug(lastDonation.name)}.${clip.ext}`, {
+      type: clip.blob.type,
+    });
+  }
+
+  // Native share sheet — on iOS/Android this includes "Save Video",
+  // which is the road into the photo library
+  shareClipBtn.addEventListener("click", async () => {
+    if (!clip) return;
+    try {
+      await navigator.share({ files: [clipFile()], title: "The Stolen Years" });
+    } catch {
+      /* user dismissed the sheet */
+    }
+  });
 
   downloadBtn.addEventListener("click", () => {
     if (!lastDonation) return;
@@ -63,10 +81,10 @@ export function setupShare() {
     phoneScreen.innerHTML = `
       <div class="share-render">
         <div class="share-render__brand">@weandmecfs · The Stolen Years</div>
-        <h3 class="share-render__title">I ignited a <em>future</em>.</h3>
+        <h3 class="share-render__title">I lit a <em>branch</em>.</h3>
         <p class="share-render__name">${escapeHtml(who)} · ${detail}</p>
         ${dedication}
-        <div class="share-render__cta">Ignite yours · weandmecfs.org</div>
+        <div class="share-render__cta">Light yours · weandmecfs.org</div>
       </div>
     `;
     phoneCaption.textContent = donation.anonymous
@@ -90,6 +108,10 @@ export function setupShare() {
     clip = result;
     phoneScreen.innerHTML = `<video class="share-video" src="${result.url}" autoplay muted loop playsinline></video>`;
     downloadBtn.disabled = false;
+    if (navigator.canShare && navigator.canShare({ files: [clipFile()] })) {
+      shareClipBtn.hidden = false;
+      shareClipBtn.disabled = false;
+    }
     shareMeta.textContent = "Your clip is ready.";
   }
 
@@ -150,13 +172,13 @@ function buildShareSvg(donation) {
     <path d="M 60 ${h * 0.7} C ${w * 0.3} ${h * 0.4}, ${w * 0.4} ${h * 0.85}, ${w * 0.5} ${h * 0.55} S ${w * 0.85} ${h * 0.25}, ${w - 60} ${h * 0.45}" stroke="url(#line)" stroke-width="3" fill="none" stroke-linecap="round"/>
   </g>
   <text x="40" y="80" fill="#9d9890" font-family="Inter, sans-serif" font-size="13" letter-spacing="3">@WEANDMECFS · THE STOLEN YEARS</text>
-  <text x="40" y="${h * 0.78}" fill="#f4f2ed" font-family="Inter, sans-serif" font-size="40" font-weight="500">I ignited a <tspan fill="${accent}" font-style="italic">future</tspan>.</text>
+  <text x="40" y="${h * 0.78}" fill="#f4f2ed" font-family="Inter, sans-serif" font-size="40" font-weight="500">I lit a <tspan fill="${accent}" font-style="italic">branch</tspan>.</text>
   <text x="40" y="${h * 0.83}" fill="${accent}" font-family="Inter, sans-serif" font-size="17">${escapeHtml(who)} · ${escapeHtml(detail)}</text>
   ${
     dedication
       ? `<text x="40" y="${h * 0.87}" fill="#d4b896" font-family="Inter, sans-serif" font-style="italic" font-size="19">${escapeHtml(dedication)}</text>`
       : ""
   }
-  <text x="40" y="${h - 60}" fill="#f4f2ed" font-family="Inter, sans-serif" font-size="13" letter-spacing="3">IGNITE YOURS · WEANDMECFS.ORG</text>
+  <text x="40" y="${h - 60}" fill="#f4f2ed" font-family="Inter, sans-serif" font-size="13" letter-spacing="3">LIGHT YOURS · WEANDMECFS.ORG</text>
 </svg>`;
 }
