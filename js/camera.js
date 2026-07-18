@@ -1,14 +1,15 @@
 /**
- * Scroll-driven camera. 8 keyframes, one per beat of the screenplay:
+ * Scroll-driven camera. 9 keyframes, one per beat of the screenplay:
  *
- *   0  hero      · intimate, a single luminous line
- *   1  life      · tracking alongside, the line in motion
- *   2  fork      · head-on close, the split is the subject
- *   3  past      · low angle, the stolen branch drifting down
- *   4  ideas     · lifted, calm mid-shot (the manifesto)
- *   5  ignite    · close on the hero life
- *   6  future    · following the freshly ignited branch
- *   7  topology  · the grand pull-back, thousands of lines
+ *   0  life      · intimate, a single luminous line, wide open
+ *   1  fork      · head-on close, the split is the subject
+ *   2  stolen    · low angle, the stolen branch drifting down
+ *   3  past      · pulled back, the stolen branch out of reach
+ *   4  branching · lifted wide, futures fanning out
+ *   5  ideas     · calm mid-shot (the manifesto)
+ *   6  ignite    · close on the hero life
+ *   7  future    · following the freshly ignited branch
+ *   8  topology  · the grand pull-back, thousands of lines
  */
 import * as THREE from "three";
 import { smoothstep } from "./util.js";
@@ -16,12 +17,13 @@ import { smoothstep } from "./util.js";
 // Keyframe t values match section centers: i / (sections - 1)
 const KEYFRAMES = [
   { t: 0.0,   pos: [0.0, 0.3, 7.0],   look: [0, 0, 0], roll: 0,     fov: 48 },
-  { t: 0.143, pos: [2.4, 0.4, 6.0],   look: [0, 0, 0], roll: -0.03, fov: 50 },
-  { t: 0.286, pos: [0.0, 0.2, 4.6],   look: [0, 0, 0], roll: 0,     fov: 46 },
-  { t: 0.429, pos: [-2.4, -1.3, 7.5], look: [0, -0.4, 0], roll: -0.04, fov: 50 },
-  { t: 0.571, pos: [0.0, 3.0, 22.0],  look: [0, 1.6, 0], roll: 0,   fov: 52 },
-  { t: 0.714, pos: [3.0, 0.5, 5.0],   look: [0, 0, 0], roll: 0.02,  fov: 42 },
-  { t: 0.857, pos: [0.5, 0.8, 5.5],   look: [0, 0, 0], roll: 0,     fov: 44 },
+  { t: 0.125, pos: [0.0, 0.2, 4.6],   look: [0, 0, 0], roll: 0,     fov: 46 },
+  { t: 0.25,  pos: [-2.4, -1.3, 7.5], look: [0, -0.4, 0], roll: -0.04, fov: 50 },
+  { t: 0.375, pos: [-1.8, -0.6, 9.5], look: [0, -0.6, 0], roll: -0.02, fov: 50 },
+  { t: 0.5,   pos: [0.0, 3.0, 22.0],  look: [0, 1.6, 0], roll: 0,   fov: 52 },
+  { t: 0.625, pos: [0.0, 2.2, 16.0],  look: [0, 1.2, 0], roll: 0,   fov: 50 },
+  { t: 0.75,  pos: [3.0, 0.5, 5.0],   look: [0, 0, 0], roll: 0.02,  fov: 42 },
+  { t: 0.875, pos: [0.5, 0.8, 5.5],   look: [0, 0, 0], roll: 0,     fov: 44 },
   { t: 1.0,   pos: [0.0, 26.0, 20.0], look: [0, 7, 0], roll: 0,     fov: 55 },
 ];
 
@@ -82,16 +84,16 @@ export function makeCameraController(camera) {
    * (the hero life the donor is about to light up).
    */
   function focusOn(point, distance = 5) {
-    KEYFRAMES[5].look = [point.x, point.y, point.z];
     KEYFRAMES[6].look = [point.x, point.y, point.z];
-    KEYFRAMES[5].pos = [point.x + 3, point.y + 0.5, point.z + distance];
-    KEYFRAMES[6].pos = [point.x + 0.5, point.y + 0.8, point.z + distance + 0.5];
+    KEYFRAMES[7].look = [point.x, point.y, point.z];
+    KEYFRAMES[6].pos = [point.x + 3, point.y + 0.5, point.z + distance];
+    KEYFRAMES[7].pos = [point.x + 0.5, point.y + 0.8, point.z + distance + 0.5];
   }
 
   /**
    * Aim the opening beats at the hero life so the single line is
-   * actually in frame: hero (line right of the text), life (tracking),
-   * fork (head-on), past (down toward the stolen branch).
+   * actually in frame: life (line right of the text), fork (head-on),
+   * stolen (down toward the stolen branch), past (pulled back from it).
    *
    * `lift` shifts the camera down so the subject rides the upper part
    * of the frame — used in portrait, where the narrow horizontal FOV
@@ -103,7 +105,6 @@ export function makeCameraController(camera) {
    */
   function aimStory(hero, lift = 0, xs = 1) {
     const fork = hero.forkPos;
-    const mid = hero.livedPath[Math.floor(hero.livedPath.length / 2)];
 
     // The hero line is long and horizontal, so beat 0 keeps its full
     // offsets: shifting only changes which part of the line you see
@@ -112,18 +113,19 @@ export function makeCameraController(camera) {
 
     // Closer beats get proportionally less lift or the subject
     // leaves the frame entirely
-    const l1 = lift * 0.5;
-    KEYFRAMES[1].pos = [mid.x + 2.2 * xs, mid.y + 0.4 - l1, mid.z + 5.2];
-    KEYFRAMES[1].look = [mid.x + 1.0 * xs, mid.y - l1, mid.z];
+    const l1 = lift * 0.3;
+    KEYFRAMES[1].pos = [fork.x + 0.4 * xs, fork.y + 0.2 - l1, fork.z + 4.6];
+    KEYFRAMES[1].look = [fork.x + 0.9 * xs, fork.y - l1, fork.z];
 
-    const l2 = lift * 0.3;
-    KEYFRAMES[2].pos = [fork.x + 0.4 * xs, fork.y + 0.2 - l2, fork.z + 4.6];
-    KEYFRAMES[2].look = [fork.x + 0.9 * xs, fork.y - l2, fork.z];
-
-    const l3 = lift * 0.25;
+    const l2 = lift * 0.25;
     const stolenMid = hero.stolenPath[13];
-    KEYFRAMES[3].pos = [stolenMid.x + 0.3 * xs, stolenMid.y + 0.4 - l3, stolenMid.z + 5.6];
-    KEYFRAMES[3].look = [stolenMid.x + 1.0 * xs, stolenMid.y - 0.35 - l3, stolenMid.z];
+    KEYFRAMES[2].pos = [stolenMid.x + 0.3 * xs, stolenMid.y + 0.4 - l2, stolenMid.z + 5.6];
+    KEYFRAMES[2].look = [stolenMid.x + 1.0 * xs, stolenMid.y - 0.35 - l2, stolenMid.z];
+
+    // Past: same subject, pulled back — the stolen branch out of reach
+    const l3 = lift * 0.2;
+    KEYFRAMES[3].pos = [stolenMid.x - 0.3 * xs, stolenMid.y + 0.8 - l3, stolenMid.z + 8.2];
+    KEYFRAMES[3].look = [stolenMid.x + 1.1 * xs, stolenMid.y - 0.5 - l3, stolenMid.z];
   }
 
   return { update, focusOn, aimStory };

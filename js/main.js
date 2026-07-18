@@ -4,7 +4,7 @@
  * Architecture:
  *   renderer + bloom  — the luminous-line look
  *   galaxy            — procedurally generated lives in one fat-line draw
- *   camera            — 8-beat scroll-driven keyframe animation
+ *   camera            — 9-beat scroll-driven keyframe animation
  *   ignite            — gift (blue) and action (lime) ignitions
  *   clip              — records the real 9s share video while a branch ignites
  *   live              — Supabase-backed shared galaxy: ignitions persist
@@ -42,7 +42,11 @@ const renderer = new THREE.WebGLRenderer({
   alpha: true,
   powerPreference: "high-performance",
 });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+// Phones are DPR 3 — capping at 2 rendered at 2/3 native and read as
+// blurry. The mobile scene is already lighter (fewer lives, softer
+// bloom), so it can afford native resolution.
+const DPR_CAP = isMobile ? 3 : 2;
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, DPR_CAP));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(0x000000, 0);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -70,7 +74,7 @@ document.body.appendChild(css2dRenderer.domElement);
 // ============================================================
 const composer = new EffectComposer(renderer);
 composer.setSize(window.innerWidth, window.innerHeight);
-composer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+composer.setPixelRatio(Math.min(window.devicePixelRatio, DPR_CAP));
 composer.addPass(new RenderPass(scene, camera));
 const BLOOM_BASE = isMobile ? 0.65 : 0.85;
 const bloom = new UnrealBloomPass(
@@ -235,14 +239,14 @@ function frame() {
   camCtl.update(scrollProgress);
 
   // The screenplay reveal:
-  //   beats 0-1  · only the hero's lived line
-  //   beat  2    · the fork: the hero's stolen + future branches appear
-  //   beat  4    · a few faint neighbors join for the manifesto
-  //   beat  7    · the full topology
-  const heroBranches = smoothstep(0.16, 0.3, scrollProgress);
+  //   beat  0    · only the hero's lived line
+  //   beat  1    · the fork: the hero's stolen + future branches appear
+  //   beat  4    · faint neighbors join — the future is branching
+  //   beat  8    · the full topology
+  const heroBranches = smoothstep(0.06, 0.14, scrollProgress);
   const others =
-    0.22 * smoothstep(0.44, 0.6, scrollProgress) +
-    0.58 * smoothstep(0.8, 0.97, scrollProgress);
+    0.22 * smoothstep(0.4, 0.52, scrollProgress) +
+    0.58 * smoothstep(0.84, 0.98, scrollProgress);
   galaxy.setReveal(others, heroBranches);
 
   // Milestone: the structure bends and brightens for a breath
@@ -259,7 +263,7 @@ function frame() {
     }
   }
   // Ease bloom off for the wide shot so the core doesn't wash out
-  bloom.strength = BLOOM_BASE - 0.4 * smoothstep(0.8, 1, scrollProgress) + bloomBoost;
+  bloom.strength = BLOOM_BASE - 0.4 * smoothstep(0.84, 1, scrollProgress) + bloomBoost;
 
   galaxy.updateColors(t, !reducedMotion);
   if (!reducedMotion) galaxy.updateDrift(t);
