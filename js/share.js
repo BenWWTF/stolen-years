@@ -66,8 +66,8 @@ export function setupShare() {
   function renderShare(life, donation, { pendingClip = false } = {}) {
     lastDonation = donation;
     clip = null;
+    document.getElementById("shareReveal").hidden = false;
     document.getElementById("shareStage").classList.remove("is-empty");
-    document.getElementById("shareEmpty").hidden = true;
 
     const who = donation.anonymous ? "An unnamed light" : donation.name;
     const detail =

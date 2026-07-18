@@ -208,6 +208,13 @@ input, button { font: inherit; color: inherit; }
 .line--center { margin-left: auto; margin-right: auto; }
 .line em.stolen { color: var(--stolen); font-style: normal; }
 
+/* Full-contrast line for beats where the field burns bright behind */
+.line--bright {
+  color: var(--ink);
+  font-weight: 500;
+  text-shadow: 0 1px 14px rgba(0, 0, 0, 0.95), 0 0 36px rgba(0, 0, 0, 0.75);
+}
+
 /* The fork payoff — hidden until the visitor breaks the timeline */
 .line--payoff {
   margin-top: 8px;
@@ -228,7 +235,7 @@ input, button { font: inherit; color: inherit; }
   line-height: 1.22;
   letter-spacing: -0.02em;
   color: var(--ink);
-  margin: 0 0 36px;
+  margin: 0 0 22px;
 }
 .manifesto em {
   font-style: italic;
@@ -238,13 +245,20 @@ input, button { font: inherit; color: inherit; }
   padding-bottom: 0.08em;
   line-height: 1.15;
 }
+/* Statement, then response: same voice, one step down */
 .manifesto__punch {
   font-family: var(--display);
-  font-weight: 600;
-  font-size: clamp(18px, 1.8vw, 24px);
-  letter-spacing: -0.01em;
-  color: var(--milestone);
+  font-weight: 500;
+  font-size: clamp(20px, 2.4vw, 30px);
+  letter-spacing: -0.015em;
+  color: var(--ink);
   margin: 0;
+}
+.manifesto__punch em {
+  font-style: italic;
+  color: var(--milestone);
+  display: inline-block;
+  padding-bottom: 0.08em;
 }
 
 /* ============================================================
@@ -522,12 +536,12 @@ input:focus {
   color: var(--ink-dim);
 }
 
-.share-empty {
-  margin: 28px 0 0;
-  font-size: 14px;
-  color: var(--ink-dim);
-}
 .share-stage.is-empty { display: none; }
+
+/* The share beat's second header line — dimmer so the two big lines
+   read as statement + echo, not one blob */
+.share-line { color: var(--ink-mute); }
+.share-line em { color: var(--brand-bright); }
 
 .share-video {
   position: absolute;
