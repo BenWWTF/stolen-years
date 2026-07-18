@@ -64,9 +64,12 @@ export function setupIgnite({ galaxy, scene, onIgnite, onIgniteStart }) {
     blending: THREE.AdditiveBlending,
     depthWrite: false,
   });
+  // Parented to the galaxy, not the scene: the galaxy rotates with
+  // scroll, and path coordinates are galaxy-local — a scene-level
+  // light drifts visibly off its branch
   const travelingLight = new THREE.Mesh(SPHERE_GEOM, lightMat);
   travelingLight.visible = false;
-  scene.add(travelingLight);
+  galaxy.object.add(travelingLight);
 
   const haloMat = new THREE.MeshBasicMaterial({
     color: COL_GIFT_HALO,
@@ -77,14 +80,14 @@ export function setupIgnite({ galaxy, scene, onIgnite, onIgniteStart }) {
   });
   const halo = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 12), haloMat);
   halo.visible = false;
-  scene.add(halo);
+  galaxy.object.add(halo);
 
   // Donor tag that follows the light
   const tagEl = document.createElement("div");
   tagEl.className = "donor-tag";
   const css2dTag = new CSS2DObject(tagEl);
   css2dTag.visible = false;
-  scene.add(css2dTag);
+  galaxy.object.add(css2dTag);
 
   let activeLife = null;
   let travelStart = 0;
@@ -187,7 +190,6 @@ export function setupIgnite({ galaxy, scene, onIgnite, onIgniteStart }) {
     const donation = readForm();
     if (!donation) return;
     const target = pickTarget(galaxy);
-    document.getElementById("ignite").scrollIntoView({ behavior: "smooth", block: "center" });
     ignite(target, donation, _now());
   }
 
@@ -248,7 +250,14 @@ export function setupIgnite({ galaxy, scene, onIgnite, onIgniteStart }) {
     }
   });
 
-  return { ignite, update, setNow: (fn) => (_now = fn) };
+  // World-space position of the traveling light, for the camera to follow
+  const _worldPos = new THREE.Vector3();
+  function lightWorldPos() {
+    if (!activeLife || !travelingLight.visible) return null;
+    return travelingLight.getWorldPosition(_worldPos);
+  }
+
+  return { ignite, update, setNow: (fn) => (_now = fn), lightWorldPos };
 }
 
 function pickTarget(galaxy) {

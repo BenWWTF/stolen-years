@@ -109,10 +109,14 @@ galaxy.seedLit(2); // scenery, excluded from every counter
 // ============================================================
 const camCtl = makeCameraController(camera);
 const isPortrait = () => window.innerHeight > window.innerWidth;
+// Landscape also gets a small lift so the hero line rides above the
+// text block instead of cutting through it
 const aimForViewport = () =>
-  camCtl.aimStory(galaxy.heroLife, isPortrait() ? 2.4 : 0, isPortrait() ? 0.3 : 1);
+  camCtl.aimStory(galaxy.heroLife, isPortrait() ? 2.4 : 0.55, isPortrait() ? 0.3 : 1);
 aimForViewport();
-camCtl.focusOn(galaxy.heroLife.forkPos);
+// The ignite beats frame the point on the sick branch where the
+// light will rise, not the fork
+camCtl.focusOn(galaxy.heroLife.lightAnchor);
 
 // ============================================================
 // Toast
@@ -165,12 +169,43 @@ const live = setupLive(galaxy, {
   onCountChange: (n) => setCount(n),
 });
 
+// ============================================================
+// The ignition cinematic. The form's job is done, so it steps
+// aside: the camera leaves scroll control, chases the light up
+// the branch, holds on the newly lit timeline while the clip
+// finishes recording, then delivers the visitor to the share
+// beat. Skipped under prefers-reduced-motion.
+// ============================================================
+const igniteInner = document.querySelector("#ignite .beat__inner");
+let cine = null; // { life, start, dur, startScrollY }
+const cinePos = new THREE.Vector3();
+const cineLook = new THREE.Vector3();
+const CINE_TRAVEL = { land: new THREE.Vector3(1.4, 0.6, 4.6), port: new THREE.Vector3(0.15, 0.4, 6.2) };
+const CINE_HOLD = { land: new THREE.Vector3(1.2, 0.9, 5.8), port: new THREE.Vector3(0, 1.0, 7.5) };
+
+function endCinematic() {
+  const stayed = Math.abs(window.scrollY - cine.startScrollY) < 150;
+  igniteInner.classList.remove("is-ignited");
+  cine = null;
+  if (stayed) document.getElementById("share").scrollIntoView({ behavior: "smooth" });
+  else showToast("A new timeline begins", "See it", "#share");
+}
+
 let clipPromise = null;
 const igniteCtl = setupIgnite({
   galaxy,
   scene,
   onIgniteStart: (life, donation) => {
     clipPromise = clip.supported ? clip.start(donation, 9) : null;
+    if (!reducedMotion) {
+      cine = {
+        life,
+        start: clock.getElapsedTime(),
+        dur: clipPromise ? 9.4 : 4.5, // hold until the clip is in the can
+        startScrollY: window.scrollY,
+      };
+      igniteInner.classList.add("is-ignited");
+    }
   },
   onIgnite: (life, donation) => {
     share.renderShare(life, donation, { pendingClip: !!clipPromise });
@@ -179,7 +214,7 @@ const igniteCtl = setupIgnite({
       if (url) share.setShareUrl(url);
       else setCount(count + 1); // offline: still count locally
     });
-    showToast("A new timeline begins", "See it", "#share");
+    if (reducedMotion) showToast("A new timeline begins", "See it", "#share");
   },
 });
 igniteCtl.setNow(() => clock.getElapsedTime());
@@ -293,7 +328,35 @@ function frame() {
     topbar.classList.toggle("is-stuck", stuck);
   }
 
-  camCtl.update(scrollProgress, parallax);
+  if (cine) {
+    const ct = t - cine.start;
+    if (ct >= cine.dur) {
+      endCinematic();
+      camCtl.update(scrollProgress, parallax);
+    } else {
+      const off = isPortrait() ? "port" : "land";
+      const lp = igniteCtl.lightWorldPos();
+      if (lp) {
+        // Travel: chase the light up the branch
+        cineLook.copy(lp);
+        cinePos.copy(lp).add(CINE_TRAVEL[off]);
+      } else {
+        // Hold: rest on the lit timeline, drifting slowly back
+        const path = cine.life.futurePath;
+        const mid = path[Math.floor(path.length * 0.6)];
+        const end = path[path.length - 1];
+        cineLook.set(mid.x, mid.y, mid.z);
+        galaxy.object.localToWorld(cineLook);
+        cinePos.set(end.x, end.y, end.z);
+        galaxy.object.localToWorld(cinePos);
+        cinePos.add(CINE_HOLD[off]);
+        cinePos.z += Math.max(0, ct - 2.6) * 0.25;
+      }
+      camCtl.follow(cinePos, cineLook);
+    }
+  } else {
+    camCtl.update(scrollProgress, parallax);
+  }
 
   // The screenplay reveal:
   //   beat  0    · only the hero's lived line
@@ -307,11 +370,15 @@ function frame() {
     forkBrokenAt < 0 &&
     scrollProgress >= FORK_GATE.min &&
     scrollProgress <= FORK_GATE.max;
-  const heroBranches = reducedMotion
-    ? smoothstep(0.06, 0.14, scrollProgress)
-    : forkBrokenAt < 0
-      ? 0
-      : smoothstep(0, 1.6, t - forkBrokenAt);
+  // Windowed by scroll so a broken fork doesn't leak into the hero
+  // beat when the visitor scrolls back to the top
+  const heroBranches =
+    smoothstep(0.03, 0.08, scrollProgress) *
+    (reducedMotion
+      ? smoothstep(0.06, 0.14, scrollProgress)
+      : forkBrokenAt < 0
+        ? 0
+        : smoothstep(0, 1.6, t - forkBrokenAt));
   const streamSurge = smoothstep(0.4, 0.5, scrollProgress) - 0.5 * smoothstep(0.56, 0.66, scrollProgress);
   const others =
     0.36 * streamSurge +

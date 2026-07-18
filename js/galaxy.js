@@ -92,14 +92,22 @@ class Life {
       z: zDrift * t,
     }));
 
-    // Future fan: strand 0 is the middle one (the one that ignites)
-    const rises = [range(rng, 0.9, 1.3), range(rng, 0.4, 0.6), range(rng, 1.7, 2.1)];
+    // The patient's "now": a point partway down the sick branch.
+    // The future fan rises from HERE, not from the fork — research
+    // doesn't undo the infection, it bends the sick timeline itself.
+    const anchorIdx = 8;
+    this.lightAnchor = this.stolenPath[anchorIdx];
+
+    // Future fan: strand 0 is the middle one (the one that ignites).
+    // Rises are steeper than before — they start below the lived line
+    // and have to climb back above it to read as recovery.
+    const rises = [range(rng, 1.2, 1.6), range(rng, 0.6, 0.9), range(rng, 2.0, 2.4)];
     const spreads = [0, -range(rng, 0.4, 0.7), range(rng, 0.4, 0.7)];
     this.futurePaths = [];
     for (let k = 0; k < FUTURE_STRANDS; k++) {
       this.futurePaths.push(
-        buildPath(fork, dir, restLen * (1 - k * 0.08), POINTS_PER_BRANCH, (t) => ({
-          y: rises[k] * Math.pow(t, 1.7),
+        buildPath(this.lightAnchor, dir, restLen * (1 - k * 0.08), POINTS_PER_BRANCH, (t) => ({
+          y: rises[k] * Math.pow(t, 1.5),
           z: spreads[k] * t,
         }))
       );
@@ -206,11 +214,12 @@ export function buildGalaxy({
       (t) => scaled(COL_LIVED, smooth(0, 0.45, t))
     );
 
-    // 2. STOLEN — beige, fading to black at the tip
+    // 2. STOLEN — the sick timeline. Brighter than before so it reads
+    // as ITS OWN thing, not an afterthought; still dies to black.
     emitBranch(
       life.stolenPath,
-      (t) => scaled(COL_STOLEN, 0.55 * Math.pow(1 - t, 1.6)),
-      (t) => scaled(COL_STOLEN, 0.55 * Math.pow(1 - t, 1.6))
+      (t) => scaled(COL_STOLEN, 0.78 * Math.pow(1 - t, 1.8)),
+      (t) => scaled(COL_STOLEN, 0.78 * Math.pow(1 - t, 1.8))
     );
 
     // 3. FUTURE FAN — strand 0 ignites; the outer strands stay dormant

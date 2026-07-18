@@ -137,6 +137,15 @@ input, button { font: inherit; color: inherit; }
 .beat--center { justify-content: center; }
 .beat--center .beat__inner { margin: 0 auto; text-align: center; }
 
+/* Hero: text anchors to the lower third so the lifeline owns the
+   middle of the frame instead of cutting through the headline */
+.beat--hero { align-items: flex-end; }
+.beat--hero .beat__inner { padding-bottom: 10vh; }
+
+/* The ignite beat steps aside while the ignition cinematic runs */
+.beat__inner { transition: opacity 700ms var(--ease); }
+.beat__inner.is-ignited { opacity: 0; pointer-events: none; }
+
 /* Readability scrim: a soft dark pool behind centered text blocks so
    the galaxy dims exactly where copy sits and stays bright elsewhere */
 .beat--center .beat__inner {

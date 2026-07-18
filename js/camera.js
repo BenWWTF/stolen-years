@@ -86,6 +86,19 @@ export function makeCameraController(camera) {
   }
 
   /**
+   * Cinematic override: track a moving point directly, ignoring the
+   * scroll keyframes. Shares the same lerp state as update(), so
+   * handing control back and forth never snaps.
+   */
+  function follow(pos, look) {
+    targetPos.copy(pos);
+    targetLook.copy(look);
+    camera.position.lerp(targetPos, 0.07);
+    currentLook.lerp(targetLook, 0.09);
+    camera.lookAt(currentLook);
+  }
+
+  /**
    * Re-aim the ignite + future beats at a specific world point
    * (the hero life the donor is about to light up).
    */
@@ -134,5 +147,5 @@ export function makeCameraController(camera) {
     KEYFRAMES[3].look = [stolenMid.x + 1.1 * xs, stolenMid.y - 0.5 - l3, stolenMid.z];
   }
 
-  return { update, focusOn, aimStory };
+  return { update, follow, focusOn, aimStory };
 }
