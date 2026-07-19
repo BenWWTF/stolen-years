@@ -163,10 +163,10 @@
   <div class="cover-title">THE STOLEN<br />YEARS.<br /><span style="color:#9d9890;">Under the hood.</span></div>
   <p class="cover-sub">
     Prototype specification &amp; architecture. The technical companion to the
-    project brief (WEME-BRF-01): what the working mockup actually is, how it is
-    built, what is real, what is simulated, and what we hand over.
+    project brief: what the working mockup actually is, how it is built,
+    what is real, what is simulated, and what we hand over.
   </p>
-  <div class="cover-badge">FOR wild. — the engineering read</div>
+  <div class="cover-badge">FOR wild. · the engineering read</div>
   <svg viewBox="0 0 800 120" style="width:100%; margin-top:16mm;" aria-hidden="true">
     <path class="beatline" d="M0,60 C200,40 320,80 420,62 S 650,30 800,55" opacity="0.9"/>
     <path class="beatline" d="M420,62 C520,80 600,105 720,112" opacity="0.35" stroke="#b08d5f"/>
@@ -187,12 +187,12 @@
   <p>
     The mockup at <a href="https://benwwtf.github.io/stolen-years/" style="color:var(--blue); text-decoration:none;">benwwtf.github.io/stolen-years</a>
     is not a video or a click-dummy: it is working software with a live shared backend. This document maps it
-    for your engineers — so you can judge quickly what is worth keeping, what you will replace, and where the
+    for your engineers, so you can judge quickly what is worth keeping, what you will replace, and where the
     genuinely unsolved work is.
   </p>
   <p>
     Everything described here is handed over without restriction. Treat the code as a foundation or as a
-    reference implementation to discard — both are fine with us. It was written to be read: vanilla ES modules,
+    reference implementation to discard; both are fine with us. It was written to be read: vanilla ES modules,
     no build step, no framework, comments where intent isn't obvious.
   </p>
   <div class="callout">One rule survives any rewrite: no tracking, no analytics, no cookies, and no donation
@@ -238,7 +238,7 @@
     <tr><th style="width:34mm;">Fact</th><th>Value</th></tr>
     <tr><td>Rendering</td><td>Three.js <span class="num">0.160</span> via import map (unpkg CDN) · WebGL2 · <code>EffectComposer</code> + <code>UnrealBloomPass</code></td></tr>
     <tr><td>Geometry</td><td>One <code>LineSegments2</code> instanced draw call for the whole field: <span class="num">260</span> lives desktop / <span class="num">140</span> mobile × 5 branches × 22 segments ≈ <span class="num">57k</span> vertices</td></tr>
-    <tr><td>Determinism</td><td>Seeded RNG (<code>mulberry32</code>, seed <span class="num">20260717</span>) — identical galaxy on every load, reproducible cinematography</td></tr>
+    <tr><td>Determinism</td><td>Seeded RNG (<code>mulberry32</code>, seed <span class="num">20260717</span>): identical galaxy on every load, reproducible cinematography</td></tr>
     <tr><td>Pixel ratio</td><td>capped at <span class="num">2</span> desktop, <span class="num">3</span> mobile (3× phones read a 2× canvas as blurry)</td></tr>
     <tr><td>Dependencies</td><td>Three.js and supabase-js. Nothing else. No bundler, no transpiler.</td></tr>
     <tr><td>Hosting</td><td>GitHub Pages (static). Deploy = <code>git push</code>.</td></tr>
@@ -249,24 +249,24 @@
 
   <h2>Visual grammar (this is the load-bearing part)</h2>
   <ul>
-    <li><b>The lived line</b> — white, a comet trail: dark in the far past, brightening toward the present. A pulse
+    <li><b>The lived line</b>: white, a comet trail: dark in the far past, brightening toward the present. A pulse
       of light travels along it in every beat; the line is alive before anything happens to it.</li>
-    <li><b>The sick timeline</b> — empathy beige <span class="mono" style="color:var(--beige);">#d4b896</span>, continues
+    <li><b>The sick timeline</b>: empathy beige <span class="mono" style="color:var(--beige);">#d4b896</span>, continues
       from the break, droops, and fades to black at its tip. This is "the stolen years" themselves. The word
       <i>stolen</i> in the copy carries the same color.</li>
-    <li><b>The hope fan</b> — three faint blue strands. Crucially, they rise <b>from a point on the sick branch</b>,
+    <li><b>The hope fan</b>: three faint blue strands. Crucially, they rise <b>from a point on the sick branch</b>,
       not from the break: research does not undo the infection, it bends the sick timeline upward from where
       the patient actually is. A donation ignites the middle strand
       (<span class="mono" style="color:var(--blue);">#2d6be4 → #bcdcff</span>); non-monetary actions ignite in lime
       (<span class="mono" style="color:#8fa844;">#c5e866</span>).</li>
   </ul>
   <div class="quiet">This anchoring decision (hope sprouts from the sick line) came out of the team's own review
-  and is deliberate. If you change it, change it knowingly — it is the sentence the geometry speaks.</div>
+  and is deliberate. If you change it, change it knowingly: it is the sentence the geometry speaks.</div>
 
   <h2>How the reveal works</h2>
   <p>
     All colors live in per-vertex buffers under additive blending, so <code>color × 0</code> is invisible.
-    The staged reveal across the nine beats is therefore pure color math on one geometry — no objects are
+    The staged reveal across the nine beats is therefore pure color math on one geometry; no objects are
     added or removed, ever. Ignitions blend a branch from its dormant color to its lit color over 1.4&nbsp;s;
     a per-life drift ("breathing") and the hero pulse are written into the same buffers each frame.
   </p>
@@ -274,8 +274,8 @@
   <h2>Performance posture</h2>
   <ul>
     <li>Mobile: fewer lives (140), thinner lines (1.7&nbsp;px vs 2.2&nbsp;px), softer bloom (0.65 vs 0.85), stronger pulse and drift so the small frame stays alive.</li>
-    <li>Bloom is <i>reduced</i> when the field is dense (the beat-4 stream, the finale) — more glow over many lines reads as grey fog; less glow keeps strands distinct.</li>
-    <li>Camera, reveal, and rotation all derive from one lerped scroll value read inside the rAF loop — no scroll handlers, no scroll-jacking.</li>
+    <li>Bloom is <i>reduced</i> when the field is dense (the beat-4 stream, the finale): more glow over many lines reads as grey fog; less glow keeps strands distinct.</li>
+    <li>Camera, reveal, and rotation all derive from one lerped scroll value read inside the rAF loop: no scroll handlers, no scroll-jacking.</li>
   </ul>
 
   <div class="foot"><span>weandmecfs.org</span><span>WEME-SPC-01 · V1.0 · 07/2026</span><span>2</span></div>
@@ -296,7 +296,7 @@
     <tr><td>01</td><td>A life wide open</td><td>intimate, line rides above the bottom-anchored text</td><td>only the hero's lived line + traveling pulse</td></tr>
     <tr><td>02</td><td>Then, everything changes</td><td>head-on at the break point</td><td><b>tap gate:</b> line stays intact until touched; the tap snaps it (bloom flash, branches unfold 1.6&nbsp;s, payoff copy fades in after)</td></tr>
     <tr><td>03</td><td>The Stolen Years</td><td>low angle on the sick branch</td><td>title beat; beige italic mirrors the branch</td></tr>
-    <tr><td>04</td><td>We cannot change the past</td><td>pulled back, the branch out of reach</td><td>—</td></tr>
+    <tr><td>04</td><td>We cannot change the past</td><td>pulled back, the branch out of reach</td><td>·</td></tr>
     <tr><td>05</td><td>Twenty million timelines</td><td><b>inside the stream</b>, fov 58</td><td>field surges to fill the frame edge-to-edge, then settles</td></tr>
     <tr><td>06</td><td>Better ideas</td><td>calm mid-shot</td><td>manifesto → hands into the CTA</td></tr>
     <tr><td>07</td><td>Light a branch</td><td>close on the light anchor</td><td>form; <b>hold-to-light</b> (2&nbsp;s charge); ignition cinematic takes over</td></tr>
@@ -321,15 +321,15 @@
   <div class="cols" style="margin-top:4mm;">
     <div>
       <h2 style="margin-top:0;">Destruction is a tap</h2>
-      <p>Instant, casual, almost accidental — that is how the disease arrives. At beat 02 the scroll story
+      <p>Instant, casual, almost accidental: that is how the disease arrives. At beat 02 the scroll story
       pauses on an intact line and a quiet prompt (<i>touch the line</i>). One tap anywhere breaks the timeline.</p>
-      <p class="mute" style="margin-top:2mm;">Soft gate: scrolling past breaks it automatically — the story can
+      <p class="mute" style="margin-top:2mm;">Soft gate: scrolling past breaks it automatically; the story can
       never stall. Under reduced motion the reveal stays scroll-driven and the copy is never hidden.</p>
     </div>
     <div>
       <h2 style="margin-top:0;">Creation is a hold</h2>
       <p>The submit button charges for 2 seconds under a sustained press; release early and the charge drains
-      back. Illness takes a second, repair takes commitment — the visitor's own fingers learn the difference.</p>
+      back. Illness takes a second, repair takes commitment: the visitor's own fingers learn the difference.</p>
       <p class="mute" style="margin-top:2mm;">Keyboard (Enter) and reduced-motion users submit instantly.
       An aborted press teaches the gesture: “Press and hold until it ignites.”</p>
     </div>
@@ -340,7 +340,7 @@
     On a completed hold the page briefly takes the camera away from the scroll: the form fades out, the camera
     chases the traveling light up the branch (donor name riding alongside as a CSS2D tag), rests on the newly
     lit timeline while the share clip finishes recording (~9.4&nbsp;s total), then auto-delivers the visitor to
-    the share beat. If the visitor scrolls during the sequence, control is theirs — we fall back to a toast.
+    the share beat. If the visitor scrolls during the sequence, control is theirs; we fall back to a toast.
     Camera scroll-control and follow-mode share one lerp state, so handoffs never snap.
   </p>
 
@@ -348,7 +348,7 @@
   <ul>
     <li>Desktop: the whole scene leans gently toward the cursor (pointer parallax on the camera target).</li>
     <li>The field breathes constantly (per-life sinusoidal drift); the hero pulse runs in every beat and continues through the fork into the lit branch after ignition.</li>
-    <li>Your brief asks for much more here (ripples, bending toward touch) — agreed, and nothing in the architecture blocks it: all positions live in one dynamic buffer that is already rewritten per frame.</li>
+    <li>Your brief asks for much more here (ripples, bending toward touch): agreed, and nothing in the architecture blocks it: all positions live in one dynamic buffer that is already rewritten per frame.</li>
   </ul>
 
   <h2>Accessibility as implemented</h2>
@@ -359,7 +359,7 @@
     <tr><td>Ignition</td><td>9.4&nbsp;s camera cinematic + auto-advance</td><td>no camera takeover; toast link instead</td></tr>
     <tr><td>Scene motion</td><td>pulse, drift, milestone bend, parallax</td><td>all disabled via <code>prefers-reduced-motion</code></td></tr>
   </table>
-  <div class="quiet">The brief's "two intensities" ask goes beyond this — a designed calm mode chosen on entry,
+  <div class="quiet">The brief's "two intensities" ask goes beyond this: a designed calm mode chosen on entry,
   not just an honored media query. We agree it is the right bar; the current behavior map above is the floor,
   not the ceiling.</div>
 
@@ -374,7 +374,7 @@
   <h1 class="section"><span class="arrow">→</span> THE LIVE LAYER</h1>
   <p>
     The galaxy is shared. Every ignition persists, every visitor sees all previous lights, and new ignitions
-    appear in real time while you watch — the page is never the same twice.
+    appear in real time while you watch; the page is never the same twice.
   </p>
   <table>
     <tr><th style="width:40mm;">Component</th><th>Behavior</th></tr>
@@ -382,25 +382,25 @@
     <tr><td>Security</td><td>Row Level Security: public read, constrained public insert, no update/delete. The publishable key in the client is public by design; the RLS policy is the actual boundary.</td></tr>
     <tr><td>Load</td><td>on page load, latest 400 ignitions light their branches instantly (settled, no animation); total count comes from an exact count query.</td></tr>
     <tr><td>Realtime</td><td>one WebSocket subscription on INSERT: someone else donates, a branch ignites live in your open tab.</td></tr>
-    <tr><td>Placement</td><td>ignition id hashes deterministically to a life in the galaxy — the same light occupies the same branch for every visitor, which makes personal links meaningful.</td></tr>
+    <tr><td>Placement</td><td>ignition id hashes deterministically to a life in the galaxy: the same light occupies the same branch for every visitor, which makes personal links meaningful.</td></tr>
     <tr><td>Share links</td><td><code>?light=&lt;id&gt;</code> greets the arriving visitor with the donor's light by name ("Anna's light is part of this galaxy").</td></tr>
     <tr><td>Counter</td><td>global campaign total; deliberately hidden below 10 so early days don't read as empty. Every 10th ignition bends the whole structure for a breath.</td></tr>
-    <tr><td>Offline</td><td>if Supabase is unreachable the page runs fully local — ignitions still animate, nothing errors.</td></tr>
+    <tr><td>Offline</td><td>if Supabase is unreachable the page runs fully local; ignitions still animate, nothing errors.</td></tr>
   </table>
 
   <div class="secno" style="margin-top:7mm;">07 / 08</div>
   <h1 class="section"><span class="arrow">→</span> THE SHARE CLIP</h1>
   <p>
-    After an ignition the visitor gets a real vertical video of their own moment — not a canned asset. The WebGL
+    After an ignition the visitor gets a real vertical video of their own moment, not a canned asset. The WebGL
     canvas is center-cropped into a 720×1280 compositing canvas at 30&nbsp;fps, the donor overlay ("I lit a
     <i>branch</i>." · name · dedication) is drawn on top, and ~9 seconds are recorded via
-    <code>MediaRecorder</code> — MP4 on Safari, WebM on Chrome/Firefox, ~1–2&nbsp;MB. Because the ignition
+    <code>MediaRecorder</code>: MP4 on Safari, WebM on Chrome/Firefox, ~1-2&nbsp;MB. Because the ignition
     cinematic follows the light, the clip is automatically well-framed.
   </p>
   <ul>
-    <li><b>Share clip</b> hands the file to the native share sheet (Web Share API Level 2) — on iOS/Android this includes <i>Save Video</i>, the road into the photo library and into stories.</li>
+    <li><b>Share clip</b> hands the file to the native share sheet (Web Share API Level 2): on iOS/Android this includes <i>Save Video</i>, the road into the photo library and into stories.</li>
     <li><b>Download clip</b> saves the file directly; browsers without MediaRecorder fall back to a styled SVG still.</li>
-    <li>We evaluated GIF and rejected it: for this content a GIF is 10–30&nbsp;MB of 256-color banding; every target platform prefers MP4.</li>
+    <li>We evaluated GIF and rejected it: for this content a GIF is 10-30&nbsp;MB of 256-color banding; every target platform prefers MP4.</li>
   </ul>
 
   <div class="foot"><span>weandmecfs.org</span><span>WEME-SPC-01 · V1.0 · 07/2026</span><span>5</span></div>
@@ -430,10 +430,10 @@
       <h2 style="margin-top:0;">Simulated or absent</h2>
       <ul>
         <li><b>Payment.</b> The gift path simulates; no money moves. We can wire Stripe Checkout + webhook → ignition ourselves if that helps the budget (as offered in the brief).</li>
-        <li><b>Explorable topography.</b> Not built — this is the new layer the brief asks you to design.</li>
+        <li><b>Explorable topography.</b> Not built; this is the new layer the brief asks you to design.</li>
         <li><b>Calm mode.</b> Only the reduced-motion floor exists, not the designed on-entry choice.</li>
         <li><b>Older-phone validation.</b> Tuned for modern phones; the low-end matrix is untested.</li>
-        <li>No CMS, no i18n, no email capture — all deliberate prototype scope.</li>
+        <li>No CMS, no i18n, no email capture; all deliberate prototype scope.</li>
       </ul>
     </div>
   </div>
@@ -441,18 +441,21 @@
   <h2>Honest edges we already know about</h2>
   <ul>
     <li>WebM downloads on desktop Chrome can't be AirDropped into an iOS photo library (the mobile share-sheet path covers the case that matters; ffmpeg.wasm or server-side transcode would close it fully).</li>
-    <li>The scene graph couples the traveling light and name tags to the galaxy's scroll-driven rotation — anything you add that rides a branch must be parented to the galaxy object, not the scene. We learned this the visible way.</li>
+    <li>The scene graph couples the traveling light and name tags to the galaxy's scroll-driven rotation: anything you add that rides a branch must be parented to the galaxy object, not the scene.</li>
     <li>Long-press on iOS needs the text-selection callout suppressed on the hold button (done in CSS, deserves a real-device pass).</li>
+    <li><b>The mobile form vs. the virtual keyboard: unsolved.</b> When the keyboard opens over the floating
+      form, the visual viewport, the fixed WebGL scene, and the scroll position fight: content jumps above/below
+      the form, before and after typing. iOS Safari is the hard case; it needs deliberate
+      visual-viewport choreography or a rethought mobile input pattern, not a patch.</li>
   </ul>
 
   <h2>Handoff</h2>
   <table>
     <tr><th style="width:40mm;">Item</th><th>Detail</th></tr>
-    <tr><td>Repository</td><td><code>github.com/BenWWTF/stolen-years</code> — full history, honest commit messages. Handed over without restriction.</td></tr>
-    <tr><td>Backend</td><td>Supabase project (free tier) transfers with the campaign, or you replace it — the client interface is 4 functions in <code>live.js</code> (~110 lines).</td></tr>
+    <tr><td>Repository</td><td><code>github.com/BenWWTF/stolen-years</code>: full history, honest commit messages. Handed over without restriction.</td></tr>
+    <tr><td>Backend</td><td>Supabase project (free tier) transfers with the campaign, or you replace it; the client interface is 4 functions in <code>live.js</code> (~110 lines).</td></tr>
     <tr><td>Brand</td><td>WE&amp;ME wordmark/amp assets in <code>assets/brand/</code>; palette and radii tokenized in <code>:root</code> of the stylesheet.</td></tr>
     <tr><td>Invariants</td><td>Privacy rules (no tracking, no amounts stored) · the two-verb interaction grammar · the geometry's meaning (hope rises from the sick line) · a first-class calm experience · "100% of donations go to research" stays true in copy and in flow.</td></tr>
-    <tr><td>Contact</td><td>Caroline Ströck · caroline@weandmecfs.org · technical questions: Benjamin Missbach</td></tr>
   </table>
 
   <p class="mute" style="margin-top:3mm;">
