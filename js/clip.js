@@ -53,7 +53,7 @@ export function makeClipRecorder(sourceCanvas) {
     ctx.fillStyle = "#9d9890";
     ctx.font = "500 22px 'Inter', sans-serif";
     ctx.textBaseline = "top";
-    ctx.fillText("@WEANDMECFS · THE STOLEN YEARS", 48, 56);
+    ctx.fillText("@WEANDMECFS · THE UNWRITTEN YEARS", 48, 56);
 
     const isAct = donation.kind === "action";
     const accent = isAct ? "#c5e866" : "#bcdcff";

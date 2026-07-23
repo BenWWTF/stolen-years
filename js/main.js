@@ -1,5 +1,5 @@
 /**
- * The Stolen Years · v2.
+ * The Unwritten Years · v2.
  *
  * Architecture:
  *   renderer + bloom  — the luminous-line look
@@ -439,7 +439,7 @@ function frame() {
 requestAnimationFrame(frame);
 
 console.log(
-  "%cThe Stolen Years · v2 · live",
+  "%cThe Unwritten Years · v2 · live",
   "color:#c5e866; font-size:16px; padding:6px 0;"
 );
 console.log(

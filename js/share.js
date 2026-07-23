@@ -17,7 +17,7 @@ export function setupShare() {
   let shareUrl = null;
 
   function clipFile() {
-    return new File([clip.blob], `stolen-years-${slug(lastDonation.name)}.${clip.ext}`, {
+    return new File([clip.blob], `unwritten-years-${slug(lastDonation.name)}.${clip.ext}`, {
       type: clip.blob.type,
     });
   }
@@ -27,7 +27,7 @@ export function setupShare() {
   shareClipBtn.addEventListener("click", async () => {
     if (!clip) return;
     try {
-      await navigator.share({ files: [clipFile()], title: "The Stolen Years" });
+      await navigator.share({ files: [clipFile()], title: "The Unwritten Years" });
     } catch {
       /* user dismissed the sheet */
     }
@@ -38,11 +38,11 @@ export function setupShare() {
     let href, filename;
     if (clip) {
       href = clip.url;
-      filename = `stolen-years-${slug(lastDonation.name)}.${clip.ext}`;
+      filename = `unwritten-years-${slug(lastDonation.name)}.${clip.ext}`;
     } else {
       const svg = buildShareSvg(lastDonation);
       href = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
-      filename = `stolen-years-${slug(lastDonation.name)}.svg`;
+      filename = `unwritten-years-${slug(lastDonation.name)}.svg`;
     }
     const a = document.createElement("a");
     a.href = href;
@@ -80,7 +80,7 @@ export function setupShare() {
 
     phoneScreen.innerHTML = `
       <div class="share-render">
-        <div class="share-render__brand">@weandmecfs · The Stolen Years</div>
+        <div class="share-render__brand">@weandmecfs · The Unwritten Years</div>
         <h3 class="share-render__title">I lit a <em>branch</em>.</h3>
         <p class="share-render__name">${escapeHtml(who)} · ${detail}</p>
         ${dedication}
@@ -169,7 +169,7 @@ function buildShareSvg(donation) {
   <g filter="url(#glow)">
     <path d="M 60 ${h * 0.7} C ${w * 0.3} ${h * 0.4}, ${w * 0.4} ${h * 0.85}, ${w * 0.5} ${h * 0.55} S ${w * 0.85} ${h * 0.25}, ${w - 60} ${h * 0.45}" stroke="url(#line)" stroke-width="3" fill="none" stroke-linecap="round"/>
   </g>
-  <text x="40" y="80" fill="#9d9890" font-family="Inter, sans-serif" font-size="13" letter-spacing="3">@WEANDMECFS · THE STOLEN YEARS</text>
+  <text x="40" y="80" fill="#9d9890" font-family="Inter, sans-serif" font-size="13" letter-spacing="3">@WEANDMECFS · THE UNWRITTEN YEARS</text>
   <text x="40" y="${h * 0.78}" fill="#f4f2ed" font-family="Inter, sans-serif" font-size="40" font-weight="500">I lit a <tspan fill="${accent}" font-style="italic">branch</tspan>.</text>
   <text x="40" y="${h * 0.83}" fill="${accent}" font-family="Inter, sans-serif" font-size="17">${escapeHtml(who)} · ${escapeHtml(detail)}</text>
   ${
